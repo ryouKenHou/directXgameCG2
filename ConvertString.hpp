@@ -30,10 +30,3 @@ std::string ConvertString(const std::wstring& str) {
     return result;
 }
 
-void Log(const std::string& message) {
-    OutputDebugStringA(message.c_str());
-}
-
-void Log(const std::wstring& message) {
-	Log(ConvertString(message));
-}
