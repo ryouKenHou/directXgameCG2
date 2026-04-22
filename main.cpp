@@ -5,6 +5,13 @@
 #include <fstream>
 #include <chrono>
 
+#include <d3d12.h>
+#include <dxgi1_6.h>
+#include <cassert>
+
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
+
 void Log(std::ostream& os, const std::string& message) {
 	os << message <<std::endl;
 	OutputDebugStringA(message.c_str());
@@ -26,6 +33,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+	// =========================Create logs====================
 	std::filesystem::create_directories("logs");
 
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -39,6 +47,63 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	//Log("Hello, DirectX!\n");
 	Log(logStream, "Hello, DirectX!");
 
+	// ======================= DXGI Factory ======================
+	IDXGIFactory7* dxgiFactory = nullptr;
+	HREFTYPE hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
+	assert(SUCCEEDED(hr));
+
+	// =========================Select adapter====================
+	IDXGIAdapter4* useAdapter = nullptr;
+	for (UINT i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, 
+		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, 
+		IID_PPV_ARGS(&useAdapter)) != DXGI_ERROR_NOT_FOUND; ++i
+		) {
+
+		DXGI_ADAPTER_DESC3 adapterDesc{};
+		hr = useAdapter->GetDesc3(&adapterDesc);
+		assert(SUCCEEDED(hr));
+
+		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
+			Log(logStream, std::format("Use adapter: {}\n", ConvertString(adapterDesc.Description)));
+			break;
+		}
+		useAdapter = nullptr;
+	}
+
+	assert(useAdapter != nullptr);
+
+	// =========================Create device====================
+	ID3D12Device* device = nullptr;
+
+	D3D_FEATURE_LEVEL featureLevels[] = {
+		D3D_FEATURE_LEVEL_12_2,
+		D3D_FEATURE_LEVEL_12_1,
+		D3D_FEATURE_LEVEL_12_0,
+	};
+
+	const char *featureLevelStrings[] = {
+		"12.2",
+		"12.1",
+		"12.0",
+	};
+
+	for (size_t i = 0; i < std::size(featureLevels); ++i) {
+		hr = D3D12CreateDevice(
+			useAdapter,
+			featureLevels[i],
+			IID_PPV_ARGS(&device)
+		);
+		if (SUCCEEDED(hr)) {
+			Log(logStream, std::format("feature level: {}.\n", featureLevelStrings[i]));
+			break;
+		}
+	}
+
+	assert(device != nullptr);
+	Log(logStream, "Complete create D3D12 device!\n");
+
+
+	// =========================Create window====================
 	WNDCLASS wc{};
 
 	wc.lpfnWndProc = WndProc;
