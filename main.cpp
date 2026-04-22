@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <cstdint>
+#include "ConvertString.hpp"
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
