@@ -22,4 +22,9 @@
   <ItemGroup>
     <Text Include=".editorconfig" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ConvertString.hpp">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
