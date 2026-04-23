@@ -18,7 +18,7 @@
 
 void Log(std::ostream& os, const std::string& message) {
 	os << message <<std::endl;
-	OutputDebugStringA(message.c_str());
+	OutputDebugStringA((message + "\n").c_str());
 }
 
 void Log(std::ostream& os, const std::wstring& message) {
@@ -92,7 +92,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		assert(SUCCEEDED(hr));
 
 		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
-			Log(logStream, std::format("Use adapter: {}\n", ConvertString(adapterDesc.Description)));
+			Log(logStream, std::format("Use adapter: {}\n", ConvertString(static_cast<std::wstring> (adapterDesc.Description))));
 			break;
 		}
 		useAdapter = nullptr;
