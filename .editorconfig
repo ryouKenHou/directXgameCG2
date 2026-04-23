@@ -3,7 +3,7 @@ charset = utf-8
 
 spelling_error_severity = error
 
-spelling_checkable_types = identifier, comments
+spelling_checkable_types = identifiers, comments
 
 spelling_languages = en-us
 

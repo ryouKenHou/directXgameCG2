@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <chrono>
+#include <format>
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
