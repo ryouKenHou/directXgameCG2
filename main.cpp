@@ -92,7 +92,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		assert(SUCCEEDED(hr));
 
 		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
-			Log(logStream, std::format("Use adapter: {}\n", ConvertString(static_cast<std::wstring> (adapterDesc.Description))));
+			Log(logStream, std::format("Use adapter: {}\n", ConvertString(std::wstring(adapterDesc.Description))));
 			break;
 		}
 		useAdapter = nullptr;
