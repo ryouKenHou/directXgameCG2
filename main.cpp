@@ -32,7 +32,7 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
 	CreateDirectory(L"./dump", nullptr);
 	StringCchPrintfW(filePath, MAX_PATH, L"./dump/%04d-%02d%02d-%02d%02d%02d.dmp",
 		time.wYear, time.wMonth, time.wDay,
-		time.wHour, time.wMinute);
+		time.wHour, time.wMinute, time.wSecond);
 	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0,0);
 	DWORD processId = GetCurrentProcessId();
 	DWORD threadId = GetCurrentThreadId();
@@ -165,8 +165,90 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		nullptr
 	);
 
-	ShowWindow(hwnd, SW_SHOW);
+	ShowWindow(hwnd, SW_SHOW);	
 
+	// CommandQueue
+	ID3D12CommandQueue* commandQueue = nullptr;
+	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
+	hr = device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&commandQueue));
+	assert(SUCCEEDED(hr));
+
+	//command allocator
+	ID3D12CommandAllocator* commandAllocator = nullptr;
+	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
+	assert(SUCCEEDED(hr));
+
+	// command list
+	ID3D12GraphicsCommandList* commandList = nullptr;
+	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, IID_PPV_ARGS(&commandList));
+	assert(SUCCEEDED(hr));
+
+
+	// swap chain
+	IDXGISwapChain4* swapChain = nullptr;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+	swapChainDesc.Width = kClientWidth;
+	swapChainDesc.Height = kClientHeight;
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount = 2;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	hr = dxgiFactory->CreateSwapChainForHwnd(
+		commandQueue,
+		hwnd,
+		&swapChainDesc,
+		nullptr,
+		nullptr,
+		reinterpret_cast<IDXGISwapChain1**>(&swapChain)
+	);
+
+	// Descriptor heap
+	ID3D12DescriptorHeap* rtvHeap = nullptr;
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.NumDescriptors = 2;
+	hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap));
+	assert(SUCCEEDED(hr));
+
+	// swap chain 
+	ID3D12Resource* swapChainTargets[2] = { nullptr };
+	hr = swapChain->GetBuffer(0, IID_PPV_ARGS(&swapChainTargets[0]));
+	assert(SUCCEEDED(hr));
+	hr = swapChain->GetBuffer(1, IID_PPV_ARGS(&swapChainTargets[1]));
+	assert(SUCCEEDED(hr));
+
+	// rtv
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
+	rtvHandles[0] = rtvHandle;
+	device->CreateRenderTargetView(swapChainTargets[0], &rtvDesc, rtvHandles[0]);
+	rtvHandles[1].ptr = rtvHandles[0].ptr + device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	device->CreateRenderTargetView(swapChainTargets[1], &rtvDesc, rtvHandles[1]);
+	
+	// render
+	UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], FALSE, nullptr);
+	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
+	commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
+	hr = commandList->Close();
+	assert(SUCCEEDED(hr));
+
+	// execute command list
+	ID3D12CommandList* commandLists[] = { commandList };
+	commandQueue->ExecuteCommandLists(1, commandLists);
+
+	swapChain->Present(1, 0);
+	hr = commandAllocator->Reset();
+	assert(SUCCEEDED(hr));
+	hr = commandList->Reset(commandAllocator, nullptr);
+	assert(SUCCEEDED(hr));
+
+	// =========================Message loop====================
 	MSG msg{};
 
 	while (msg.message != WM_QUIT) {
