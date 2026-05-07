@@ -16,6 +16,9 @@
 #include <strsafe.h>
 #pragma comment(lib, "dbghelp.lib")
 
+#include <dxgidebug.h>
+#pragma comment(lib, "dxguid.lib")
+
 void Log(std::ostream& os, const std::string& message) {
 	os << message <<std::endl;
 	OutputDebugStringA((message + "\n").c_str());
@@ -326,6 +329,35 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		}
 	}
+
+	// =========================Release resources====================
+	CloseHandle(fenceEvent);
+	fence->Release();
+	rtvHeap->Release();
+	swapChainTargets[0]->Release();
+	swapChainTargets[1]->Release();
+	swapChain->Release();
+	commandList->Release();
+	commandAllocator->Release();
+	commandQueue->Release();
+	device->Release();
+	useAdapter->Release();
+	dxgiFactory->Release();
+#ifdef _DEBUG
+	debugController->Release();
+#endif // _DEBUG
+
+	// =========================Report live objects====================
+
+	IDXGIDebug1* debug = nullptr;
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
+		debug->ReportLiveObjects(DXGI_DEBUG_ALL,DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
+		debug->Release();
+	}
+
+	CloseWindow(hwnd);
 
 	return 0;
 }
