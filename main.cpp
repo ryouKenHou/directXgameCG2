@@ -19,8 +19,15 @@
 #include <dxgidebug.h>
 #pragma comment(lib, "dxguid.lib")
 
+#include <dxcapi.h>
+#pragma comment(lib, "dxcompiler.lib")
+
+struct Vector4 {
+	float x, y, z, w;
+};
+
 void Log(std::ostream& os, const std::string& message) {
-	os << message <<std::endl;
+	os << message << std::endl;
 	OutputDebugStringA((message + "\n").c_str());
 }
 
@@ -36,7 +43,7 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
 	StringCchPrintfW(filePath, MAX_PATH, L"./dump/%04d-%02d%02d-%02d%02d%02d.dmp",
 		time.wYear, time.wMonth, time.wDay,
 		time.wHour, time.wMinute, time.wSecond);
-	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0,0);
+	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
 	DWORD processId = GetCurrentProcessId();
 	DWORD threadId = GetCurrentThreadId();
 
@@ -60,6 +67,65 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
+std::ofstream logStream;
+
+IDxcBlob* CompileShader(
+	const std::wstring& filePath,
+	const wchar_t* profile,
+	IDxcUtils* dxcUtils,
+	IDxcCompiler3* dxcCompiler,
+	IDxcIncludeHandler* includeHandler
+) {
+	// read file
+	Log(logStream, ConvertString(std::format(L"Begin CompileShader: path:{}, profile:{}.\n", filePath, profile)));
+	IDxcBlobEncoding* shaderSource = nullptr;
+	HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
+	assert(SUCCEEDED(hr));
+
+	DxcBuffer shaderSourceBuffer;
+	shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
+	shaderSourceBuffer.Size = shaderSource->GetBufferSize();
+	shaderSourceBuffer.Encoding = DXC_CP_UTF8;
+
+	// compile
+	LPCWSTR arguments[] = {
+		filePath.c_str(),
+		L"-E", L"main",
+		L"-T", profile,
+		L"-Zi", L"-Qembed_debug",
+		L"-Od",
+		L"-Zpr",
+	};
+
+	IDxcResult* shaderResult = nullptr;
+	hr = dxcCompiler->Compile(
+		&shaderSourceBuffer,
+		arguments,
+		_countof(arguments),
+		includeHandler,
+		IID_PPV_ARGS(&shaderResult)
+	);
+	assert(SUCCEEDED(hr));
+
+	// check error
+	IDxcBlobUtf8* shaderError = nullptr;
+	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
+	if (shaderError != nullptr && shaderError->GetStringLength() > 0) {
+		Log(logStream, shaderError->GetStringPointer());
+		assert(false);
+	}
+
+	// get result
+	IDxcBlob* shaderBlob = nullptr;
+	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+	assert(SUCCEEDED(hr));
+
+	Log(logStream, ConvertString(std::format(L"Compile Succeeded: path:{}, profile:{}.\n", filePath, profile)));
+	shaderSource->Release();
+	shaderResult->Release();
+	return shaderBlob;
+}
+
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	SetUnhandledExceptionFilter(ExportDump);
@@ -72,7 +138,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	std::chrono::zoned_time localTime{ std::chrono::current_zone(), nowSeconds };
 	std::string dateString = std::format("{:%Y%m%d_%H%M%S}", localTime);
 	std::string logFilePath = std::string("logs/") + dateString + ".log";
-	std::ofstream logStream(logFilePath);
+	logStream.open(logFilePath);
 
 
 	//Log("Hello, DirectX!\n");
@@ -94,8 +160,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// =========================Select adapter====================
 	IDXGIAdapter4* useAdapter = nullptr;
-	for (UINT i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, 
-		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, 
+	for (UINT i = 0; dxgiFactory->EnumAdapterByGpuPreference(i,
+		DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
 		IID_PPV_ARGS(&useAdapter)) != DXGI_ERROR_NOT_FOUND; ++i
 		) {
 
@@ -121,7 +187,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		D3D_FEATURE_LEVEL_12_0,
 	};
 
-	const char *featureLevelStrings[] = {
+	const char* featureLevelStrings[] = {
 		"12.2",
 		"12.1",
 		"12.0",
@@ -189,17 +255,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		wc.lpszClassName,
 		L"CG2",
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, 
 		CW_USEDEFAULT,
-		wrc.right - wrc.left, 
+		CW_USEDEFAULT,
+		wrc.right - wrc.left,
 		wrc.bottom - wrc.top,
-		nullptr, 
-		nullptr, 
-		wc.hInstance, 
+		nullptr,
+		nullptr,
+		wc.hInstance,
 		nullptr
 	);
 
-	ShowWindow(hwnd, SW_SHOW);	
+	ShowWindow(hwnd, SW_SHOW);
 
 	// CommandQueue
 	ID3D12CommandQueue* commandQueue = nullptr;
@@ -266,7 +332,145 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	device->CreateRenderTargetView(swapChainTargets[0], &rtvDesc, rtvHandles[0]);
 	rtvHandles[1].ptr = rtvHandles[0].ptr + device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	device->CreateRenderTargetView(swapChainTargets[1], &rtvDesc, rtvHandles[1]);
-	
+
+	// fence 
+	ID3D12Fence* fence = nullptr;
+	uint64_t fenceValue = 0;
+	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+	assert(SUCCEEDED(hr));
+
+	HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	assert(fenceEvent != nullptr);
+
+	// ======================== dxcCompile ======================
+	// dxcCompile initialization
+	IDxcUtils* dxcUtils = nullptr;
+	IDxcCompiler3* dxcCompiler = nullptr;
+	hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
+	assert(SUCCEEDED(hr));
+	hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
+	assert(SUCCEEDED(hr));
+
+	IDxcIncludeHandler* includeHandler = nullptr;
+	hr = dxcUtils->CreateDefaultIncludeHandler(&includeHandler);
+	assert(SUCCEEDED(hr));
+
+	// root signature and pipeline state object initialization
+	// root signature
+	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
+	descriptionRootSignature.Flags =
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	ID3DBlob* signatureBlob = nullptr;
+	ID3DBlob* errorBlob = nullptr;
+	hr = D3D12SerializeRootSignature(&descriptionRootSignature,
+		D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
+	if (FAILED(hr)) {
+		Log(logStream, reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+		assert(false);
+	}
+	ID3D12RootSignature* rootSignature = nullptr;
+	hr = device->CreateRootSignature(0,
+		signatureBlob->GetBufferPointer(),
+		signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
+	assert(SUCCEEDED(hr));
+
+	// Input layout
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[1] = {};
+	inputElementDescs[0].SemanticName = "POSITION";
+	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+	inputLayoutDesc.pInputElementDescs = inputElementDescs;
+	inputLayoutDesc.NumElements = _countof(inputElementDescs);
+
+	// BlendState 
+	D3D12_BLEND_DESC blendDesc{};
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	// RasterizerState
+	D3D12_RASTERIZER_DESC rasterizerDesc{};
+	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
+	// compile shader
+	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3d.VS.hlsl", L"vs_6_0", dxcUtils, dxcCompiler, includeHandler);
+	assert(vertexShaderBlob != nullptr);
+
+	IDxcBlob* pixelShaderBlob = CompileShader(L"Object3d.PS.hlsl", L"ps_6_0", dxcUtils, dxcCompiler, includeHandler);
+	assert(pixelShaderBlob != nullptr);
+
+	// pipeline state object
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
+	graphicsPipelineStateDesc.pRootSignature = rootSignature;
+	graphicsPipelineStateDesc.InputLayout = inputLayoutDesc;
+	graphicsPipelineStateDesc.VS = { vertexShaderBlob->GetBufferPointer(), vertexShaderBlob->GetBufferSize() };
+	graphicsPipelineStateDesc.PS = { pixelShaderBlob->GetBufferPointer(), pixelShaderBlob->GetBufferSize() };
+	graphicsPipelineStateDesc.BlendState = blendDesc;
+	graphicsPipelineStateDesc.RasterizerState = rasterizerDesc;
+	graphicsPipelineStateDesc.NumRenderTargets = 1;
+	graphicsPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	graphicsPipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	graphicsPipelineStateDesc.SampleDesc.Count = 1;
+	graphicsPipelineStateDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+	ID3D12PipelineState* pipelineState = nullptr;
+	hr = device->CreateGraphicsPipelineState(&graphicsPipelineStateDesc,
+		IID_PPV_ARGS(&pipelineState));
+	assert(SUCCEEDED(hr));
+
+	// vertex resource
+	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	D3D12_RESOURCE_DESC vertexResourceDesc{};
+	vertexResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	vertexResourceDesc.Width = sizeof(Vector4) * 3;
+	vertexResourceDesc.Height = 1;
+	vertexResourceDesc.DepthOrArraySize = 1;
+	vertexResourceDesc.MipLevels = 1;
+	vertexResourceDesc.SampleDesc.Count = 1;
+	vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	ID3D12Resource* vertexResource = nullptr;
+	hr = device->CreateCommittedResource(
+		&uploadHeapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&vertexResourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&vertexResource)
+	);
+	assert(SUCCEEDED(hr));
+
+	// vertex buffer view
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
+	vertexBufferView.SizeInBytes = sizeof(Vector4) * 3;
+	vertexBufferView.StrideInBytes = sizeof(Vector4);
+
+	// copy vertex data
+	Vector4* vertexData = nullptr;
+	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	vertexData[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
+	vertexData[1] = { 0.0f, 0.5f, 0.0f, 1.0f };
+	vertexData[2] = { 0.5f, -0.5f, 0.0f, 1.0f };
+
+	// viewport and scissor rect
+	D3D12_VIEWPORT viewport{};
+	viewport.Width = static_cast<float>(kClientWidth);
+	viewport.Height = static_cast<float>(kClientHeight);
+	viewport.TopLeftX = 0.0f;
+	viewport.TopLeftY = 0.0f;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+
+	D3D12_RECT scissorRect{};
+	scissorRect.left = 0;
+	scissorRect.top = 0;
+	scissorRect.right = static_cast<LONG>(kClientWidth);
+	scissorRect.bottom = static_cast<LONG>(kClientHeight);
+
+	// =============================================================
+
 	// render
 	UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
@@ -283,8 +487,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
 	commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
 
+	// 
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+	commandList->SetGraphicsRootSignature(rootSignature);
+	commandList->SetPipelineState(pipelineState);
+	commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	commandList->DrawInstanced(3, 1, 0, 0);
+
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	commandList->ResourceBarrier(1, &barrier);
 
 	hr = commandList->Close();
@@ -294,16 +507,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	ID3D12CommandList* commandLists[] = { commandList };
 	commandQueue->ExecuteCommandLists(1, commandLists);
 
-	// fence 
-	ID3D12Fence* fence = nullptr;
-	uint64_t fenceValue = 0;
-	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
-	assert(SUCCEEDED(hr));
-
-	HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-	assert(fenceEvent != nullptr);
-
-
+	// present
 	swapChain->Present(1, 0);
 	fenceValue++;
 	commandQueue->Signal(fence, fenceValue);
@@ -343,6 +547,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	device->Release();
 	useAdapter->Release();
 	dxgiFactory->Release();
+
+	vertexResource->Release();
+	pipelineState->Release();
+	signatureBlob->Release();
+	if (errorBlob != nullptr) {
+		errorBlob->Release();
+	}
+	rootSignature->Release();
+	pixelShaderBlob->Release();
+	vertexShaderBlob->Release();
+
 #ifdef _DEBUG
 	debugController->Release();
 #endif // _DEBUG
@@ -351,7 +566,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	IDXGIDebug1* debug = nullptr;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
-		debug->ReportLiveObjects(DXGI_DEBUG_ALL,DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
 		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
 		debug->Release();
