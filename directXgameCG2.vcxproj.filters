@@ -98,5 +98,6 @@
     <None Include="externals\imgui\.gitignore">
       <Filter>imgui</Filter>
     </None>
+    <None Include="Object3d.hlsli" />
   </ItemGroup>
 </Project>
