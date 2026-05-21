@@ -640,6 +640,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// =============================================================
 
 	// =========================ImGui initialization====================
+#ifdef _DEBUG
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
@@ -654,6 +655,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->Build();
 
+#endif
 
 	// ====================load texture and create srv=================================
 	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
@@ -691,9 +693,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		}
 		else {
 			//====== imGUI new frame ======
+#ifdef _DEBUG
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
+#endif
 			//=============================
 
 			// update
@@ -705,11 +709,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			Matrix4x4 wvpMatrix = worldMatrix  * viewMatrix * projectionMatrix;
 			*wvpData = wvpMatrix;
 
+#ifdef _DEBUG
 			// ImGui demo window
 			ImGui::ShowDemoWindow();
 
 			// ImGui render
 			ImGui::Render();
+#endif
 
 			// render
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -744,8 +750,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			commandList->DrawInstanced(3, 1, 0, 0);
 
 			// ImGui render command
+#ifdef _DEBUG
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
-
+#endif
 			// transition
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -800,16 +807,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
 	materialResource->Release();
-	wvpResource->Release();
-
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
+	wvpResource->Release();	
 
 	textureResource->Release();
 	intermediateResource->Release();
 
 #ifdef _DEBUG
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+
 	debugController->Release();
 #endif // _DEBUG
 
