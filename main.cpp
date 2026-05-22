@@ -667,6 +667,35 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	vertexData[5] = { 0.5f, -0.5f, -0.5f, 1.0f };
 	vertexData[5].texcoord = { 1.0f, 1.0f };
 
+	// sprite resource
+	ID3D12Resource* vertexResourceSprite = CreateBufferResource(device, sizeof(VertexData) * 6);
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
+	vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
+	vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 6;
+	vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
+
+	VertexData* vertexDataSprite = nullptr;
+	vertexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSprite));
+
+	vertexDataSprite[0].position = { 0.0f, 360.f, 0.0f, 1.0f };
+	vertexDataSprite[0].texcoord = { 0.0f, 1.0f };
+	vertexDataSprite[1].position = { 0.0f, 0.0f, 0.0f, 1.0f };
+	vertexDataSprite[1].texcoord = { 0.0f, 0.0f }; 
+	vertexDataSprite[2].position = { 640.f, 360.f, 0.0f, 1.0f }; 
+	vertexDataSprite[2].texcoord = { 1.0f, 1.0f }; 
+
+	vertexDataSprite[3].position = { 0.0f, 0.0f, 0.0f, 1.0f };
+	vertexDataSprite[3].texcoord = { 0.0f, 0.0f };
+	vertexDataSprite[4].position = { 640.f, 0.0f, 0.0f, 1.0f };
+	vertexDataSprite[4].texcoord = { 1.0f, 0.0f };
+	vertexDataSprite[5].position = { 640.f, 360.f, 0.0f, 1.0f };
+	vertexDataSprite[5].texcoord = { 1.0f, 1.0f };
+
+	ID3D12Resource* transformationMatrixResourceSprite = CreateBufferResource(device, sizeof(Matrix4x4));
+	Matrix4x4* transformationMatrixDataSprite = nullptr;
+	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSprite));
+	*transformationMatrixDataSprite = Matrix4x4::Identity();
+
 	// material resource
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Vector4) * 3);
 	Vector4* materialData = nullptr;
@@ -741,7 +770,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Transform transform{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
 	Transform cameraTransform{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,-5.0f} };
 
-
+	Transform TransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };	
 
 	while (msg.message != WM_QUIT) {
 		if (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -759,16 +788,24 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 			// update
 			transform.rotation.y += 0.03f;
-			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.translation, transform.rotation, transform.scale);
-			Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix(cameraTransform.translation, cameraTransform.rotation, cameraTransform.scale);
+			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.scale, transform.rotation, transform.translation);
+			Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotation, cameraTransform.translation);
 			Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
 			Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFovMatrix(60.f * 3.14159f / 180.f, static_cast<float>(kClientWidth) / static_cast<float>(kClientHeight), 0.1f, 100.0f);
 			Matrix4x4 wvpMatrix = worldMatrix  * viewMatrix * projectionMatrix;
 			*wvpData = wvpMatrix;
 
+			Matrix4x4 worldMatrixSprite = Matrix4x4::MakeAffineMatrix(TransformSprite.scale, TransformSprite.rotation, TransformSprite.translation);
+			Matrix4x4 viewMatrixSprite = Matrix4x4::Identity();
+			Matrix4x4 projectionMatrixSprite = Matrix4x4::MakeOrthographicMatrix(0.0f,0.f, static_cast<float>(kClientWidth), static_cast<float>(kClientHeight), 0.0f, 100.0f);
+			Matrix4x4 wvpMatrixSprite = worldMatrixSprite * viewMatrixSprite * projectionMatrixSprite;
+			*transformationMatrixDataSprite = wvpMatrixSprite;
+
 #ifdef _DEBUG
 			// ImGui demo window
-			ImGui::ShowDemoWindow();
+			ImGui::Begin("window");
+			ImGui::DragFloat3("sprite transform", &TransformSprite.translation.x, 0.1f);
+			ImGui::End();
 
 			// ImGui render
 			ImGui::Render();
@@ -811,6 +848,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->DrawInstanced(6, 1, 0, 0);
+
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+			commandList->DrawInstanced(6, 1, 0, 0);
+
+			
 
 			// ImGui render command
 #ifdef _DEBUG
@@ -876,6 +919,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	intermediateResource->Release();
 	depthStencilTexture->Release();
 	dsvHeap->Release();
+	transformationMatrixResourceSprite->Release();
+	vertexResourceSprite->Release();	
 
 #ifdef _DEBUG
 	ImGui_ImplDX12_Shutdown();

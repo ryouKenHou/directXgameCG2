@@ -257,15 +257,14 @@ struct Matrix4x4 {
         );
     }
 
-	static Matrix4x4 MakeAffineMatrix(const Vector3& translation, const Vector3& rotation, const Vector3& scale) {
+    static Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotation, const Vector3& translation) {
         Matrix4x4 translateMatrix = MakeTranslateMatrix(translation);
         Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
         Matrix4x4 rotationXMatrix = MakeRotationXMatrix(rotation.x);
         Matrix4x4 rotationYMatrix = MakeRotationYMatrix(rotation.y);
         Matrix4x4 rotationZMatrix = MakeRotationZMatrix(rotation.z);
-        return translateMatrix * (rotationZMatrix * rotationYMatrix * rotationXMatrix) * scaleMatrix;
+        return scaleMatrix * (rotationXMatrix * rotationYMatrix * rotationZMatrix) * translateMatrix;
     }
-
 
     static Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspect, float nearZ, float farZ) {
         float f = 1.0f / tan(fovY / 2.0f);
@@ -275,13 +274,32 @@ struct Matrix4x4 {
             0, 0, farZ / (farZ - nearZ), 1,
             0, 0, (-nearZ * farZ) / (farZ - nearZ), 0
         );
-	}
+    }
+
+    static Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearZ, float farZ) {
+        return Matrix4x4(
+            2 / (right - left), 0, 0, 0,
+            0, 2 / (top - bottom), 0, 0,
+            0, 0, 1 / (farZ - nearZ), 0,
+            (right + left) / (left - right), (top + bottom) / (bottom - top), nearZ / (nearZ - farZ), 1
+        );
+    }
+
+    static Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minZ, float maxZ) {
+        return Matrix4x4(
+            width / 2, 0, 0, 0,
+            0, -height / 2, 0, 0,
+            0, 0, maxZ - minZ, 0,
+            left + width / 2, top + height / 2, minZ, 1
+        );
+    }
 };  
+
+
 
 struct Transform {
     Vector3 scale;
     Vector3 rotation;
-    Vector3 translation;
-    
+    Vector3 translation;    
     
 };
