@@ -1,11 +1,8 @@
 #include "Object3d.hlsli"
 
-struct Material
-{
-    float32_t4 color;
-};
-
 ConstantBuffer<Material> gMaterial : register(b0);
+ConstantBuffer<DirectionalLight> gDirectionalLight : register(b1);
+
 Texture2D<float32_t4> gTexture : register(t0);
 SamplerState gSampler : register(s0);
 
@@ -19,6 +16,16 @@ PixelShaderOuput main(VertexShaderOutput input)
     float32_t4 textureColor = gTexture.Sample(gSampler, input.texcoord);
     
     PixelShaderOuput output;
-    output.color = gMaterial.color * textureColor;
+    
+    if (gMaterial.enableLighting != 0) {
+        float cos = saturate(dot(input.normal, -gDirectionalLight.direction));
+        output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intensity;
+    }
+    else {
+        output.color = gMaterial.color * textureColor;
+    }
+    
+    
+    
     return output;
 }
