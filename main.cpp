@@ -903,6 +903,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("sprite transform", &TransformSprite.translation.x, 0.1f);
 			ImGui::Checkbox("use monster ball texture", &useMonsterBall);
 			ImGui::DragFloat3("light direction", &directionalLightData->direction.x, 0.1f);
+			directionalLightData->direction.Normalize();
 			ImGui::End();
 
 			// ImGui render
