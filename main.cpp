@@ -50,6 +50,8 @@ struct VertexData {
 struct Material {
 	Vector4 color;
 	int32_t enableLighting;
+	float padding[3]; // Padding to make the size of Material a multiple of 16 bytes
+	Matrix4x4 uvTransform;
 };
 
 struct TransformationMatrix {
@@ -739,6 +741,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Material* materialData = nullptr;
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 	*materialData = { {1.0f, 1.0f, 1.0f, 1.0f}, 1 };
+	materialData->uvTransform = Matrix4x4::Identity();
 
 	// WVP resource
 	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(TransformationMatrix));
@@ -802,6 +805,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	materialResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSprite));
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	materialDataSprite->enableLighting = false;
+	materialDataSprite->uvTransform = Matrix4x4::Identity();
 
 	// == light resource ==
 	ID3D12Resource* directionalLightResource = CreateBufferResource(device, sizeof(DirectionalLight));
@@ -887,6 +891,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Transform cameraTransform{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,-5.0f} };
 
 	Transform TransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };	
+	Transform uvTransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
 
 	bool useMonsterBall = true;
 
@@ -918,13 +923,21 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			Matrix4x4 projectionMatrixSprite = Matrix4x4::MakeOrthographicMatrix(0.0f,0.f, static_cast<float>(kClientWidth), static_cast<float>(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 wvpMatrixSprite = worldMatrixSprite * viewMatrixSprite * projectionMatrixSprite;
 			*transformationMatrixDataSprite = { wvpMatrixSprite, worldMatrixSprite };
+
+			materialDataSprite->uvTransform = Matrix4x4::MakeAffineMatrix(uvTransformSprite.scale, uvTransformSprite.rotation, uvTransformSprite.translation);
 			
 #ifdef _DEBUG
 			// ImGui demo window
 			ImGui::Begin("window");
 			ImGui::DragFloat3("sprite transform", &TransformSprite.translation.x, 0.1f);
+			ImGui::DragFloat2("sprite uv transform", &uvTransformSprite.translation.x, 0.01f);
+			ImGui::DragFloat2("sprite uv scale", &uvTransformSprite.scale.x, 0.01f);
+			ImGui::DragFloat("sprite uv rotation", &uvTransformSprite.rotation.z, 0.01f);
+
 			ImGui::Checkbox("use monster ball texture", &useMonsterBall);
 			ImGui::DragFloat3("light direction", &directionalLightData->direction.x, 0.1f);
+
+
 			directionalLightData->direction.Normalize();
 			ImGui::End();
 
