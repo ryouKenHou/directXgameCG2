@@ -32,10 +32,10 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 #include "externals/DirectXTex/d3dx12.h"
 #include <vector>
 
+#include <fstream>
+#include <sstream>
+
 // ========================= Structs ========================
-struct Vector4 {
-	float x, y, z, w;
-};
 
 struct Vector2 {
 	float x, y;
@@ -63,6 +63,10 @@ struct DirectionalLight {
 	Vector4 color;
 	Vector3 direction;
 	float intensity;
+};
+
+struct ModelData {
+	std::vector<VertexData> vertices;
 };
 
 // ======================== Functions ========================
@@ -317,6 +321,71 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 	D3D12_GPU_DESCRIPTOR_HANDLE handle = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	handle.ptr += index * descriptorSize;
 	return handle;
+}
+
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename) {
+	ModelData modelData;
+	std::vector<Vector4> positions;
+	std::vector<Vector3> normals;
+	std::vector<Vector2> texcoords;
+	std::string line;
+
+	std::ifstream file(directoryPath + "/" + filename);
+	assert(file.is_open());
+
+	while (std::getline(file, line)) {
+		std::string identifier;
+		std::istringstream s(line);
+		s >> identifier;
+
+		if (identifier == "v") {
+			Vector4 position;
+			s >> position.x >> position.y >> position.z;
+			position.w = 1.0f;
+			positions.push_back(position);
+		} else if (identifier == "vt") {
+			Vector2 texcoord;
+			s >> texcoord.x >> texcoord.y;
+			texcoords.push_back(texcoord);
+		}
+		else if (identifier == "vn") {
+			Vector3 normal;
+			s >> normal.x >> normal.y >> normal.z;
+			normals.push_back(normal);
+		}
+		else if (identifier == "f") {
+			VertexData triangle[3];
+
+			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex) {
+				std::string vertexDefinition;
+				s >> vertexDefinition;
+				std::istringstream v(vertexDefinition);
+				uint32_t elementIndices[3];
+				for (int32_t element = 0; element < 3; ++element) {
+					std::string index;
+					std::getline(v, index, '/');
+					elementIndices[element] = std::stoi(index);
+				}
+
+				Vector4 position = positions[elementIndices[0] - 1];
+				Vector2 texcoord = texcoords[elementIndices[1] - 1];
+				Vector3 normal = normals[elementIndices[2] - 1];
+				
+				VertexData vertex = { position , texcoord, normal };
+				modelData.vertices.push_back(vertex);
+
+				//position.y *= -1.0f;
+				//normal.y *= -1.0f;
+				//position.x *= -1.0f;
+				//normal.x *= -1.0f;
+				//triangle[faceVertex] = { position, texcoord, normal };
+			}
+			//modelData.vertices.push_back(triangle[2]);
+			//modelData.vertices.push_back(triangle[1]);
+			//modelData.vertices.push_back(triangle[0]);
+		}	
+	}
+	return modelData;
 }
 
 // ========================= Entry point =======================
@@ -677,65 +746,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// =========================Create resources======================
 	
-	// == vertex resource for sphere ==
-	const uint32_t kSubdivisoin = 20;
-	const uint32_t kVertexCount = kSubdivisoin * kSubdivisoin * 4;
-	const uint32_t kIndexCount = kSubdivisoin * kSubdivisoin * 6;
+	ModelData modelData = LoadObjFile("resources/05_02", "plane.obj");
 
-	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * kVertexCount);
+	// == vertex resource for model ==
+	ID3D12Resource* vertexResource = CreateBufferResource(device, sizeof(VertexData) * modelData.vertices.size());
 
-	// vertex buffer view
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
-	vertexBufferView.SizeInBytes = sizeof(VertexData) * kVertexCount;
+	vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size());
 	vertexBufferView.StrideInBytes = sizeof(VertexData);
 
-	// index buffer view
-	ID3D12Resource* indexResource = CreateBufferResource(device, sizeof(uint32_t) * kIndexCount);
-	D3D12_INDEX_BUFFER_VIEW indexBufferView{};
-	indexBufferView.BufferLocation = indexResource->GetGPUVirtualAddress();
-	indexBufferView.SizeInBytes = sizeof(uint32_t) * kIndexCount;
-	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-
-	uint32_t* indexData = nullptr;
-	indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-
-	// copy vertex data
 	VertexData* vertexData = nullptr;
 	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+	std::memcpy(vertexData, modelData.vertices.data(), sizeof(*vertexData) * modelData.vertices.size());
 	
-	const float pi = 3.14159265358979323846f;
-	const float kLonEvery = (pi * 2 / kSubdivisoin);
-	const float kLatEvery = (pi / kSubdivisoin);
-
-	for (uint32_t latIndex = 0; latIndex < kSubdivisoin; ++latIndex) {
-		float lat = -pi / 2.0f + latIndex * kLatEvery;
-		for (uint32_t lonIndex = 0; lonIndex < kSubdivisoin; ++lonIndex) {
-			float lon = lonIndex * kLonEvery;
-			uint32_t start = (latIndex * kSubdivisoin + lonIndex) * 4;
-			uint32_t indexStart = (latIndex * kSubdivisoin + lonIndex) * 6;
-
-			vertexData[start + 0].position = { cosf(lat) * cosf(lon), sinf(lat), cosf(lat) * sinf(lon), 1.0f };
-			vertexData[start + 0].texcoord = { lon / (2 * pi), 1.0f - (lat + pi / 2) / pi };
-			vertexData[start + 0].normal = { vertexData[start + 0].position.x, vertexData[start + 0].position.y, vertexData[start + 0].position.z };
-
-			vertexData[start + 1].position = { cosf(lat + kLatEvery) * cosf(lon), sinf(lat + kLatEvery), cosf(lat + kLatEvery) * sinf(lon), 1.0f };
-			vertexData[start + 1].texcoord = { lon / (2 * pi), 1.0f - (lat + kLatEvery + pi / 2) / pi };
-			vertexData[start + 1].normal = { vertexData[start + 1].position.x, vertexData[start + 1].position.y, vertexData[start + 1].position.z }; 
-
-			vertexData[start + 2].position = { cosf(lat) * cosf(lon + kLonEvery), sinf(lat), cosf(lat) * sinf(lon + kLonEvery), 1.0f };
-			vertexData[start + 2].texcoord = { (lon + kLonEvery) / (2 * pi), 1.0f - (lat + pi / 2) / pi };
-			vertexData[start + 2].normal = { vertexData[start + 2].position.x, vertexData[start + 2].position.y, vertexData[start + 2].position.z };
-
-			vertexData[start + 3].position = { cosf(lat + kLatEvery) * cosf(lon + kLonEvery), sinf(lat + kLatEvery), cosf(lat + kLatEvery) * sinf(lon + kLonEvery), 1.0f };
-			vertexData[start + 3].texcoord = { (lon + kLonEvery) / (2 * pi), 1.0f - (lat + kLatEvery + pi / 2) / pi };
-			vertexData[start + 3].normal = { vertexData[start + 3].position.x, vertexData[start + 3].position.y, vertexData[start + 3].position.z };
-
-			indexData[indexStart + 0] = start + 0; indexData[indexStart + 1] = start + 1; indexData[indexStart + 2] = start + 2;
-			indexData[indexStart + 3] = start + 1; indexData[indexStart + 4] = start + 3; indexData[indexStart + 5] = start + 2;
-		}
-	}
-
 	// material resource
 	ID3D12Resource* materialResource = CreateBufferResource(device, sizeof(Material));
 	Material* materialData = nullptr;
@@ -811,7 +835,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	ID3D12Resource* directionalLightResource = CreateBufferResource(device, sizeof(DirectionalLight));
 	DirectionalLight* directionalLightData = nullptr;
 	directionalLightResource->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
-	directionalLightData->color = { 1.0f, 1.0f, 1.0f };
+	directionalLightData->color = { 1.0f, 1.0f, 1.0f ,1.0f};
 	directionalLightData->direction = { 0.0f, -1.0f, 0.0f };
 	directionalLightData->intensity = 1.0f;
 
@@ -910,7 +934,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			//=============================
 
 			// update
-			transform.rotation.y += 0.01f;
+			//transform.rotation.y += 0.01f;
 			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.scale, transform.rotation, transform.translation);
 			Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotation, cameraTransform.translation);
 			Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
@@ -935,7 +959,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat("sprite uv rotation", &uvTransformSprite.rotation.z, 0.01f);
 
 			ImGui::Checkbox("use monster ball texture", &useMonsterBall);
+			ImGui::DragFloat3("Trasform", &transform.translation.x, 0.1f);
+			ImGui::DragFloat3("Rotation", &transform.rotation.x, 0.1f);
+			ImGui::DragFloat3("Scale", &transform.scale.x, 0.1f);
 			ImGui::DragFloat3("light direction", &directionalLightData->direction.x, 0.1f);
+
+			// show modelData.vertices.size() using GUI
+			ImGui::Text("Vertex count: %d", modelData.vertices.size());
 
 
 			directionalLightData->direction.Normalize();
@@ -976,20 +1006,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			commandList->SetGraphicsRootSignature(rootSignature);
 			commandList->SetPipelineState(pipelineState);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-			commandList->IASetIndexBuffer(&indexBufferView);
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
-			commandList->DrawIndexedInstanced(kIndexCount, 1, 0, 0, 0);
+			commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 
 			commandList->IASetIndexBuffer(&indexBufferViewSprite);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);			
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			//commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 			// ImGui render command
 #ifdef _DEBUG
@@ -1050,7 +1079,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	vertexShaderBlob->Release();
 	
 	vertexResource->Release();
-	indexResource->Release();
 	materialResource->Release();
 	wvpResource->Release();	
 
