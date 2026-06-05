@@ -359,6 +359,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 			for (int32_t faceVertex = 0; faceVertex < 3; ++faceVertex) {
 				std::string vertexDefinition;
 				s >> vertexDefinition;
+
 				std::istringstream v(vertexDefinition);
 				uint32_t elementIndices[3];
 				for (int32_t element = 0; element < 3; ++element) {
@@ -371,18 +372,27 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 				Vector2 texcoord = texcoords[elementIndices[1] - 1];
 				Vector3 normal = normals[elementIndices[2] - 1];
 				
+				position.y *= -1.0f;
+				normal.y *= -1.0f;
+
 				VertexData vertex = { position , texcoord, normal };
 				modelData.vertices.push_back(vertex);
-
-				//position.y *= -1.0f;
-				//normal.y *= -1.0f;
+				
+				
 				//position.x *= -1.0f;
 				//normal.x *= -1.0f;
 				//triangle[faceVertex] = { position, texcoord, normal };
 			}
+			//modelData.vertices.push_back(triangle[0]);
+			//modelData.vertices.push_back(triangle[1]);
+			//modelData.vertices.push_back(triangle[2]);
+		
+			
+			
 			//modelData.vertices.push_back(triangle[2]);
 			//modelData.vertices.push_back(triangle[1]);
-			//modelData.vertices.push_back(triangle[0]);
+			//modelData.vertices.push_back(triangle[0]);			
+			
 		}	
 	}
 	return modelData;
@@ -917,7 +927,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Transform TransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };	
 	Transform uvTransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
 
-	bool useMonsterBall = true;
+	bool useMonsterBall = 0;
 
 	while (msg.message != WM_QUIT) {
 		if (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -953,6 +963,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #ifdef _DEBUG
 			// ImGui demo window
 			ImGui::Begin("window");
+			// camera control
+			ImGui::DragFloat3("camera transform", &cameraTransform.translation.x, 0.1f);
+			ImGui::DragFloat3("camera rotation", &cameraTransform.rotation.x, 0.1f);
+
+
 			ImGui::DragFloat3("sprite transform", &TransformSprite.translation.x, 0.1f);
 			ImGui::DragFloat2("sprite uv transform", &uvTransformSprite.translation.x, 0.01f);
 			ImGui::DragFloat2("sprite uv scale", &uvTransformSprite.scale.x, 0.01f);
