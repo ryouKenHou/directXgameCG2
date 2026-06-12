@@ -346,6 +346,9 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		} else if (identifier == "vt") {
 			Vector2 texcoord;
 			s >> texcoord.x >> texcoord.y;
+
+			//texcoord.y = 1.0f - texcoord.y; // Invert the y-coordinate of the texture coordinate
+
 			texcoords.push_back(texcoord);
 		}
 		else if (identifier == "vn") {
@@ -372,16 +375,18 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 				Vector2 texcoord = texcoords[elementIndices[1] - 1];
 				Vector3 normal = normals[elementIndices[2] - 1];
 				
-				position.y *= -1.0f;
-				normal.y *= -1.0f;
+				//position.y *= -1.0f;
+				//normal.y *= -1.0f;
 
-				VertexData vertex = { position , texcoord, normal };
-				modelData.vertices.push_back(vertex);
+				position.x *= -1.0f;
+				normal.x *= -1.0f;
+
+				//VertexData vertex = { position , texcoord, normal };
+				//modelData.vertices.push_back(vertex);
 				
 				
-				//position.x *= -1.0f;
-				//normal.x *= -1.0f;
-				//triangle[faceVertex] = { position, texcoord, normal };
+				
+				triangle[faceVertex] = { position, texcoord, normal };
 			}
 			//modelData.vertices.push_back(triangle[0]);
 			//modelData.vertices.push_back(triangle[1]);
@@ -389,12 +394,19 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		
 			
 			
-			//modelData.vertices.push_back(triangle[2]);
-			//modelData.vertices.push_back(triangle[1]);
-			//modelData.vertices.push_back(triangle[0]);			
-			
+			modelData.vertices.push_back(triangle[2]);
+			modelData.vertices.push_back(triangle[1]);
+			modelData.vertices.push_back(triangle[0]);			
+		
 		}	
 	}
+
+	int i = 0;
+	for (VertexData v : modelData.vertices) {
+		i++;
+		Log(logStream, std::format("{}: position: {}, {}, {}, {}.\n", i, v.position.x, v.position.y, v.position.z, v.position.w));
+	}
+
 	return modelData;
 }
 
