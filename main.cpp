@@ -948,7 +948,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.scale, transform.rotation, transform.translation);
 			Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotation, cameraTransform.translation);
 			Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFovMatrix(60.f * 3.14159f / 180.f, static_cast<float>(kClientWidth) / static_cast<float>(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFovMatrix(0.45f, static_cast<float>(kClientWidth) / static_cast<float>(kClientHeight), 0.1f, 100.0f);
 			Matrix4x4 wvpMatrix = worldMatrix  * viewMatrix * projectionMatrix;
 			*wvpData = { wvpMatrix, worldMatrix };
 
