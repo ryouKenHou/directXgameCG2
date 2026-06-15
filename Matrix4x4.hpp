@@ -8,7 +8,7 @@ struct Matrix4x4 {
     Matrix4x4() {
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < 4; ++j) {
-                m[i][j] = (i == j) ? 1.0f : 0.0f; // Identity matrix
+                m[j][i] = (i == j) ? 1.0f : 0.0f; // Identity matrix
             }
         }
     }
@@ -293,6 +293,15 @@ struct Matrix4x4 {
             left + width / 2, top + height / 2, minZ, 1
         );
     }
+
+    //static Matrix4x4 Transpose(const Matrix4x4& m) {
+    //    return Matrix4x4(
+    //        m.m[0][0], m.m[1][0], m.m[2][0], m.m[3][0],
+    //        m.m[0][1], m.m[1][1], m.m[2][1], m.m[3][1],
+    //        m.m[0][2], m.m[1][2], m.m[2][2], m.m[3][2],
+    //        m.m[0][3], m.m[1][3], m.m[2][3], m.m[3][3]
+    //    );
+    //}
 };  
 
 struct Matrix3x3 {
