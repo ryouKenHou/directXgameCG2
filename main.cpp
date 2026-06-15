@@ -37,6 +37,9 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 #include <wrl.h>
 
+#include <xaudio2.h>
+#pragma comment(lib, "xaudio2.lib")
+
 // ========================= Structs ========================
 
 struct Vector2 {
@@ -67,6 +70,7 @@ struct DirectionalLight {
 	float intensity;
 };
 
+// loadobjfile related structs
 struct MaterialData {
 	std::string textureFilePath;
 };
@@ -76,6 +80,30 @@ struct ModelData {
 	MaterialData material;
 };
 
+
+// audio related structs
+struct ChunkHeader {
+	char id[4];
+	int32_t size;
+};
+
+struct RiffHeader {
+	ChunkHeader chunk;
+	char type[4];
+};
+
+struct FormatChunk {
+	ChunkHeader chunk;
+	WAVEFORMATEX fmt;
+};
+
+struct SoundData {
+	WAVEFORMATEX wfex;
+	BYTE* pBuffer;
+	unsigned int bufferSize;
+};
+
+// leak checker 
 struct D3DresourceLeakChecker {
 	~D3DresourceLeakChecker() {
 		Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
@@ -451,7 +479,81 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 	return modelData;
 }
 
+SoundData SoundLoadWave(const char* filename) {
+	//HRESULT result;
 
+	std::ifstream file;
+	file.open(filename, std::ios_base::binary);
+	assert(file.is_open());
+
+	RiffHeader riff;
+	file.read((char*)&riff, sizeof(riff));
+	if (strncmp(riff.chunk.id, "RIFF", 4) != 0) {
+		assert(0);
+	}
+	if (strncmp(riff.type, "WAVE", 4) != 0) {
+		assert(0);
+	}
+
+	FormatChunk format = {};
+	file.read((char*)&format, sizeof(ChunkHeader));
+	while (strncmp(format.chunk.id, "fmt ", 4) != 0) {
+		file.seekg(format.chunk.size, std::ios_base::cur); // skip this chunk's data
+		file.read((char*)&format, sizeof(ChunkHeader));    // read next chunk header
+		assert(!file.eof()); // safety: don't loop forever if file is malformed
+	}
+
+	assert(format.chunk.size <= sizeof(format.fmt));
+	file.read((char*)&format.fmt, format.chunk.size);
+
+
+	ChunkHeader data;
+	file.read((char*)&data, sizeof(data));
+	if (strncmp(data.id, "JUNK", 4) == 0) {
+		file.seekg(data.size, std::ios_base::cur);
+		file.read((char*)&data, sizeof(data));
+	}
+
+	if (strncmp(data.id, "data", 4) != 0) {
+		assert(0);
+	}
+
+	char* pBuffer = new char[data.size];
+	file.read(pBuffer, data.size);
+
+	file.close();
+
+	SoundData soundData = {};
+	soundData.wfex = format.fmt;
+	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
+	soundData.bufferSize = data.size;
+
+	return soundData;
+}
+
+void SoundUnload(SoundData* soundData) {
+	delete[] soundData->pBuffer;
+
+	soundData->pBuffer = 0;
+	soundData->bufferSize = 0;
+	soundData->wfex = {};
+}
+
+void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
+	HRESULT result;
+
+	IXAudio2SourceVoice* pSourceVoice = nullptr;
+	result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
+	assert(SUCCEEDED(result));
+
+	XAUDIO2_BUFFER buf{};
+	buf.pAudioData = soundData.pBuffer;
+	buf.AudioBytes = soundData.bufferSize;
+	buf.Flags = XAUDIO2_END_OF_STREAM;
+
+	result = pSourceVoice->SubmitSourceBuffer(&buf);
+	result = pSourceVoice->Start();
+}
 
 
 
@@ -814,6 +916,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		IID_PPV_ARGS(&pipelineState));
 	assert(SUCCEEDED(hr));
 
+	// ======================= XAudio2 ==============================
+
+	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
+	IXAudio2MasteringVoice* masterVoice;
+	hr = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	assert(SUCCEEDED(hr));
+	hr = xAudio2->CreateMasteringVoice(&masterVoice);
+	assert(SUCCEEDED(hr));
+
+	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav");
+
 	// =========================Create resources======================
 	
 	ModelData modelData = LoadObjFile("resources/05_02", "axis.obj");
@@ -987,6 +1100,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Transform TransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };	
 	Transform uvTransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
 
+	int frameCount = 0;
+
 	bool useMonsterBall = 0;
 
 	while (msg.message != WM_QUIT) {
@@ -1002,6 +1117,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::NewFrame();
 #endif
 			//=============================
+
+			frameCount++;
+
+			if (frameCount == 210) {
+				SoundPlayWave(xAudio2.Get(), soundData1);
+			}
 
 			// update
 			//transform.rotation.y += 0.01f;
