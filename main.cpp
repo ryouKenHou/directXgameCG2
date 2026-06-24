@@ -46,6 +46,12 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 
+
+//================== temp include ===========================
+#include "DebugCamera.h"
+
+
+
 // ========================= Structs ========================
 
 struct Vector2 {
@@ -1117,7 +1123,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	MSG msg{};
 
 	Transform transform{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
+
 	Transform cameraTransform{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,-5.0f} };
+	DebugCamera debugCamera;
+	debugCamera.Initialize(kClientWidth, kClientHeight,cameraTransform);
 
 	Transform TransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };	
 	Transform uvTransformSprite{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
@@ -1148,6 +1157,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 				OutputDebugStringA("Hit 0.\n");
 			}
 
+			debugCamera.Update(key);
+
 			frameCount++;
 
 			if (frameCount == 210) {
@@ -1157,10 +1168,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			// update
 			//transform.rotation.y += 0.01f;
 			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.scale, transform.rotation, transform.translation);
-			Matrix4x4 cameraMatrix = Matrix4x4::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotation, cameraTransform.translation);
-			Matrix4x4 viewMatrix = Matrix4x4::Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrix = Matrix4x4::MakePerspectiveFovMatrix(0.45f, static_cast<float>(kClientWidth) / static_cast<float>(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 wvpMatrix = worldMatrix  * viewMatrix * projectionMatrix;
+
+			Matrix4x4 wvpMatrix = worldMatrix * debugCamera.getViewProjectionMatrix();
 			*wvpData = { wvpMatrix, worldMatrix };
 
 			Matrix4x4 worldMatrixSprite = Matrix4x4::MakeAffineMatrix(TransformSprite.scale, TransformSprite.rotation, TransformSprite.translation);
@@ -1175,9 +1184,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			// ImGui demo window
 			ImGui::Begin("window");
 			// camera control
-			ImGui::DragFloat3("camera transform", &cameraTransform.translation.x, 0.1f);
-			ImGui::DragFloat3("camera rotation", &cameraTransform.rotation.x, 0.1f);
-
 
 			ImGui::DragFloat3("sprite transform", &TransformSprite.translation.x, 0.1f);
 			ImGui::DragFloat2("sprite uv transform", &uvTransformSprite.translation.x, 0.01f);
