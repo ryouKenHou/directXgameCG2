@@ -40,6 +40,12 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 #include <xaudio2.h>
 #pragma comment(lib, "xaudio2.lib")
 
+#define DIRECTINPUT_VERSION 0x0800
+#include <dinput.h>
+
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "dxguid.lib")
+
 // ========================= Structs ========================
 
 struct Vector2 {
@@ -927,6 +933,22 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav");
 
+	// ======================== DirectInput ============================
+	IDirectInput8* directInput = nullptr;
+	hr = DirectInput8Create(
+		wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
+	assert(SUCCEEDED(hr));
+
+	IDirectInputDevice8* keyboard = nullptr;
+	hr = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
+	assert(SUCCEEDED(hr));
+
+	hr = keyboard->SetDataFormat(&c_dfDIKeyboard);
+	assert(SUCCEEDED(hr));
+
+	hr = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+	assert(SUCCEEDED(hr));
+
 	// =========================Create resources======================
 	
 	ModelData modelData = LoadObjFile("resources/05_02", "axis.obj");
@@ -1117,6 +1139,14 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::NewFrame();
 #endif
 			//=============================
+
+			keyboard->Acquire();
+			BYTE key[256] = {};
+			keyboard->GetDeviceState(sizeof(key), key);
+
+			if (key[DIK_0]) {
+				OutputDebugStringA("Hit 0.\n");
+			}
 
 			frameCount++;
 
