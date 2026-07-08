@@ -18,7 +18,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui.cpp">
@@ -42,6 +42,18 @@
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="src\camera\DebugCamera.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="src\engine\WindowManager.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="src\engine\EngineCommon.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="src\model\Model.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include=".editorconfig" />
@@ -50,13 +62,13 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ConvertString.hpp">
+    <ClInclude Include="src\utils\ConvertString.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Matrix4x4.hpp">
+    <ClInclude Include="src\utils\Matrix4x4.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="Vector3.hpp">
+    <ClInclude Include="src\utils\Vector3.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imconfig.h">
@@ -83,10 +95,25 @@
     <ClInclude Include="externals\imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
+    <ClInclude Include="src\camera\DebugCamera.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\engine\EngineCommon.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\engine\WindowManager.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\model\Model.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\EngineHelper.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Object3d.VS.hlsl" />
-    <FxCompile Include="Object3d.PS.hlsl" />
+    <FxCompile Include="shader\Object3d.VS.hlsl" />
+    <FxCompile Include="shader\Object3d.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="externals\imgui\.editorconfig">
@@ -98,6 +125,6 @@
     <None Include="externals\imgui\.gitignore">
       <Filter>imgui</Filter>
     </None>
-    <None Include="Object3d.hlsli" />
+    <None Include="shader\Object3d.hlsli" />
   </ItemGroup>
 </Project>
