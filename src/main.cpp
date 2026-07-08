@@ -21,7 +21,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	bool useMonsterBall = 0;
 
 	Model a;
-	a.LoadModel();
+	a.LoadModel("resources/05_02", "axis.obj");
 
 	while (true) {
 		MSG msg{};

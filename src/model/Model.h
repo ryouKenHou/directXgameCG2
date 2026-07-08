@@ -23,7 +23,7 @@ private:
 public:
 	TransformationMatrix* wvpData = nullptr;
 
-	void LoadModel();
+	void LoadModel(const std::string& directoryPath, const std::string& filename);
 
 	void Draw();
 };

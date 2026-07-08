@@ -1,7 +1,7 @@
 #include "Model.h"
 
-void Model::LoadModel() {
-	modelData = LoadObjFile("resources/05_02", "axis.obj");
+void Model::LoadModel(const std::string& directoryPath, const std::string& filename) {
+	modelData = LoadObjFile(directoryPath, filename);
 
 	// == vertex resource for model ==
 	vertexResource = EngineCommon::CreateBufferResource(EngineCommon::device.Get(), sizeof(VertexData) * modelData.vertices.size());
