@@ -42,6 +42,9 @@
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="DebugCamera.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include=".editorconfig" />
@@ -82,6 +85,15 @@
     </ClInclude>
     <ClInclude Include="externals\imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugCamera.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCommon.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowManger.h">
+      <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
