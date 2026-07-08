@@ -54,7 +54,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\engine;$(ProjectDir)src\camera;$(ProjectDir)src\model;$(ProjectDir)src\utils</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\engine;$(ProjectDir)src\camera;$(ProjectDir)src\model;$(ProjectDir)src\utils;$(ProjectDir)src\math</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -83,7 +83,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\engine;$(ProjectDir)src\camera;$(ProjectDir)src\model;$(ProjectDir)src\utils</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\engine;$(ProjectDir)src\camera;$(ProjectDir)src\model;$(ProjectDir)src\utils;$(ProjectDir)src\math</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -130,10 +130,10 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="src\camera\DebugCamera.h" />
-    <ClInclude Include="src\utils\Matrix4x4.hpp" />
+    <ClInclude Include="src\math\Matrix4x4.hpp" />
     <ClInclude Include="src\engine\EngineCommon.h" />
     <ClInclude Include="src\model\Model.h" />
-    <ClInclude Include="src\utils\Vector3.hpp" />
+    <ClInclude Include="src\math\Vector3.hpp" />
     <ClInclude Include="src\engine\WindowManager.h" />
   </ItemGroup>
   <ItemGroup>

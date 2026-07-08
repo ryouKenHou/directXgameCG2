@@ -65,10 +65,10 @@
     <ClInclude Include="src\utils\ConvertString.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Matrix4x4.hpp">
+    <ClInclude Include="src\math\Matrix4x4.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\Vector3.hpp">
+    <ClInclude Include="src\math\Vector3.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imconfig.h">
