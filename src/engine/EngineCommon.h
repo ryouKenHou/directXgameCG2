@@ -33,30 +33,38 @@
 #include "../../externals/DirectXTex/DirectXTex.h"
 #include "../../externals/DirectXTex/d3dx12.h"
 
-namespace EngineCommon {
+struct ChunkHeader {
+	char id[4];
+	int32_t size;
+};
 
+struct RiffHeader {
+	ChunkHeader chunk;
+	char type[4];
+};
+
+struct FormatChunk {
+	ChunkHeader chunk;
+	WAVEFORMATEX fmt;
+};
+
+struct SoundData {
+	WAVEFORMATEX wfex;
+	BYTE* pBuffer;
+	unsigned int bufferSize;
+};
+
+static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
+
+class EngineCommon {
+public:
+	static EngineCommon& GetInstance() {
+		static EngineCommon instance;
+		return instance;
+	}
+
+	std::ofstream logStream;
 	// ========================= Structs ========================
-	struct ChunkHeader {
-		char id[4];
-		int32_t size;
-	};
-
-	struct RiffHeader {
-		ChunkHeader chunk;
-		char type[4];
-	};
-
-	struct FormatChunk {
-		ChunkHeader chunk;
-		WAVEFORMATEX fmt;
-	};
-
-	struct SoundData {
-		WAVEFORMATEX wfex;
-		BYTE* pBuffer;
-		unsigned int bufferSize;
-	};
-
 	struct D3DresourceLeakChecker {
 		~D3DresourceLeakChecker() {
 			Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
@@ -70,57 +78,57 @@ namespace EngineCommon {
 
 	// ================= Global Variable Declarations =================
 	//extern std::ofstream logStream;
-	extern D3DresourceLeakChecker leakChecker;
-	extern Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
-	extern Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
-	extern Microsoft::WRL::ComPtr<ID3D12Device> device;
-	extern Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
-	extern Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
-	extern Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
-	extern Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
-	extern DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
-	extern WindowManager windowManager;
-	extern Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
-	extern Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
+	D3DresourceLeakChecker leakChecker;
+	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
+	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
+	Microsoft::WRL::ComPtr<ID3D12Device> device;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
+	WindowManager windowManager;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
 
-	extern Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
-	extern D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
 
-	extern uint32_t descriptorSizeSRV;
-	extern uint32_t descriptorSizeRTV;
-	extern uint32_t descriptorSizeDSV;
+	uint32_t descriptorSizeSRV;
+	uint32_t descriptorSizeRTV;
+	uint32_t descriptorSizeDSV;
 
-	extern D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
-	extern Microsoft::WRL::ComPtr<ID3D12Resource> swapChainTargets[2];
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
+	Microsoft::WRL::ComPtr<ID3D12Resource> swapChainTargets[2];
 
-	extern Microsoft::WRL::ComPtr<ID3D12Fence> fence;
-	extern uint64_t fenceValue;
-	extern HANDLE fenceEvent;
+	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+	uint64_t fenceValue;
+	HANDLE fenceEvent;
 
-	extern IDxcBlob* vertexShaderBlob;
-	extern IDxcBlob* pixelShaderBlob;
+	IDxcBlob* vertexShaderBlob;
+	IDxcBlob* pixelShaderBlob;
 
-	extern Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
-	extern Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
-	extern Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilTexture;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilTexture;
 
-	extern ID3DBlob* signatureBlob;
-	extern ID3DBlob* errorBlob;
+	ID3DBlob* signatureBlob;
+	ID3DBlob* errorBlob;
 
-	extern D3D12_VIEWPORT viewport;
-	extern D3D12_RECT scissorRect;
+	D3D12_VIEWPORT viewport;
+	D3D12_RECT scissorRect;
 
-	extern Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
-	extern IDirectInput8* directInput;
-	extern IDirectInputDevice8* keyboard;
+	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
+	IDirectInput8* directInput;
+	IDirectInputDevice8* keyboard;
 
-	extern SoundData soundData1;
+	SoundData soundData1;
 
-	extern uint32_t clientWidth;
-	extern uint32_t clientHeight;
+	uint32_t clientWidth;
+	uint32_t clientHeight;
 
-	extern D3D12_RESOURCE_BARRIER barrier;
-	extern Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource;
+	D3D12_RESOURCE_BARRIER barrier;
+	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource;
 
 	// ================= Function Declarations =================
 	SoundData SoundLoadWave(const char* filename);
@@ -138,7 +146,7 @@ namespace EngineCommon {
 
 	void Log(std::ostream& os, const std::wstring& message);
 
-	static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
+
 
 	IDxcBlob* CompileShader(const std::wstring& filePath,const wchar_t* profile,IDxcUtils* dxcUtils,IDxcCompiler3* dxcCompiler,IDxcIncludeHandler* includeHandler);
 
@@ -161,4 +169,4 @@ namespace EngineCommon {
 	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 	//void TempMainFunction();
-}
+};

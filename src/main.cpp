@@ -7,7 +7,9 @@ const int32_t kClientHeight = 720;
 
 // ========================= Entry point =======================
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-	EngineCommon::Initialize(kClientWidth, kClientHeight);
+	EngineCommon* engineCommon = &EngineCommon::GetInstance();
+
+	engineCommon->Initialize(kClientWidth, kClientHeight);
 	//EngineCommon::TempMainFunction();
 
 	Transform transform{ {1.0f,1.0f,1.0f}, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
@@ -34,9 +36,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		}
 		else {
 
-			EngineCommon::keyboard->Acquire();
+			EngineCommon::GetInstance().keyboard->Acquire();
 			BYTE key[256] = {};
-			EngineCommon::keyboard->GetDeviceState(sizeof(key), key);
+			EngineCommon::GetInstance().keyboard->GetDeviceState(sizeof(key), key);
 
 			if (key[DIK_0]) {
 				OutputDebugStringA("Hit 0.\n");
@@ -47,7 +49,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			frameCount++;
 
 			if (frameCount == 210) {
-				EngineCommon::SoundPlayWave(EngineCommon::xAudio2.Get(), EngineCommon::soundData1);
+				engineCommon->SoundPlayWave(engineCommon->xAudio2.Get(), engineCommon->soundData1);
 			}
 
 			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.scale, transform.rotation, transform.translation);
@@ -56,7 +58,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			*a.wvpData = { wvpMatrix, worldMatrix };
 
 
-			EngineCommon::PreDraw();
+			engineCommon->PreDraw();
 
 #ifdef _DEBUG
 			// ImGui demo window
@@ -69,7 +71,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat("sprite uv rotation", &uvTransformSprite.rotation.z, 0.01f);
 
 			ImGui::Checkbox("use monster ball texture", &useMonsterBall);
-			ImGui::DragFloat3("Trasform", &transform.translation.x, 0.1f);
+			ImGui::DragFloat3("Transform", &transform.translation.x, 0.1f);
 			ImGui::DragFloat3("Rotation", &transform.rotation.x, 0.1f);
 			ImGui::DragFloat3("Scale", &transform.scale.x, 0.1f);
 
@@ -80,11 +82,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #endif
 			a.Draw();
 
-			EngineCommon::PostDraw();
+			engineCommon->PostDraw();
 
 		}
 	}
-	EngineCommon::Finalize();
+	engineCommon->Finalize();
 
 	return 0;
 }

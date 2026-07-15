@@ -8,65 +8,12 @@
 #pragma comment(lib, "xaudio2.lib")
 #pragma comment(lib, "dinput8.lib")
 
-namespace EngineCommon {
-    std::ofstream logStream;
+ 
 
-    // ================= Global Variable Definitions =================
-    D3DresourceLeakChecker leakChecker;
-    Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
-    Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
-    Microsoft::WRL::ComPtr<ID3D12Device> device;
-    Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList = nullptr;
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain = nullptr;
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-    WindowManager windowManager;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
-
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState = nullptr;
-    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-
-    uint32_t descriptorSizeSRV;
-    uint32_t descriptorSizeRTV;
-    uint32_t descriptorSizeDSV;
-
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
-    Microsoft::WRL::ComPtr<ID3D12Resource> swapChainTargets[2] = { nullptr, nullptr };
-
-    Microsoft::WRL::ComPtr<ID3D12Fence> fence = nullptr;
-    uint64_t fenceValue = 0;
-    HANDLE fenceEvent;
-
-    IDxcBlob* vertexShaderBlob;
-    IDxcBlob* pixelShaderBlob;
-
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilTexture = nullptr;
-
-    ID3DBlob* signatureBlob = nullptr;
-    ID3DBlob* errorBlob = nullptr;
-
-    D3D12_VIEWPORT viewport{};
-    D3D12_RECT scissorRect{};
-
-    Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
-    IDirectInput8* directInput = nullptr;
-    IDirectInputDevice8* keyboard = nullptr;
-
-    SoundData soundData1;
-
-    uint32_t clientWidth;
-    uint32_t clientHeight;
-
-    D3D12_RESOURCE_BARRIER barrier{};
-    Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource;
 
     // ================= Function Definitions =================
 
-    SoundData SoundLoadWave(const char* filename) {
+    SoundData EngineCommon::SoundLoadWave(const char* filename) {
         std::ifstream file;
         file.open(filename, std::ios_base::binary);
         assert(file.is_open());
@@ -108,14 +55,14 @@ namespace EngineCommon {
         return soundData;
     }
 
-    void SoundUnload(SoundData* soundData) {
+    void EngineCommon::SoundUnload(SoundData* soundData) {
         delete[] soundData->pBuffer;
         soundData->pBuffer = 0;
         soundData->bufferSize = 0;
         soundData->wfex = {};
     }
 
-    void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
+    void EngineCommon::SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
         HRESULT result;
         IXAudio2SourceVoice* pSourceVoice = nullptr;
         result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
@@ -130,7 +77,7 @@ namespace EngineCommon {
         result = pSourceVoice->Start();
     }
 
-    void CreateDefaultPSO() {
+    void  EngineCommon::CreateDefaultPSO() {
         IDxcUtils* dxcUtils = nullptr;
         IDxcCompiler3* dxcCompiler = nullptr;
         HREFTYPE hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
@@ -251,7 +198,7 @@ namespace EngineCommon {
         assert(SUCCEEDED(hr));
     }
 
-    void Initialize(int32_t Width, int32_t Height) {
+    void EngineCommon::Initialize(int32_t Width, int32_t Height) {
         clientHeight = Height;
         clientWidth = Width;
 
@@ -436,7 +383,7 @@ namespace EngineCommon {
         directionalLightData->intensity = 1.0f;
     }
 
-    void PreDraw() {
+    void EngineCommon::PreDraw() {
 #ifdef _DEBUG
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
@@ -466,7 +413,7 @@ namespace EngineCommon {
         commandList->RSSetScissorRects(1, &scissorRect);
     }
 
-    void PostDraw() {
+    void EngineCommon::PostDraw() {
 #ifdef _DEBUG
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 #endif
@@ -498,7 +445,7 @@ namespace EngineCommon {
         assert(SUCCEEDED(hr));
     }
 
-    void Finalize() {
+    void EngineCommon::Finalize() {
         CloseHandle(fenceEvent);
         signatureBlob->Release();
         if (errorBlob != nullptr) {
@@ -517,12 +464,12 @@ namespace EngineCommon {
         device.Reset();
     }
 
-    void Log(std::ostream& os, const std::string& message) {
+    void EngineCommon::Log(std::ostream& os, const std::string& message) {
         os << message << std::endl;
         OutputDebugStringA((message + "\n").c_str());
     }
 
-    void Log(std::ostream& os, const std::wstring& message) {
+    void EngineCommon::Log(std::ostream& os, const std::wstring& message) {
         Log(os, ConvertString(message));
     }
 
@@ -548,7 +495,7 @@ namespace EngineCommon {
         return EXCEPTION_EXECUTE_HANDLER;
     }
 
-    IDxcBlob* CompileShader(
+    IDxcBlob* EngineCommon::CompileShader(
         const std::wstring& filePath,
         const wchar_t* profile,
         IDxcUtils* dxcUtils,
@@ -605,7 +552,7 @@ namespace EngineCommon {
         return shaderBlob;
     }
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
+    Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
         D3D12_HEAP_PROPERTIES heapProperties{};
         heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
         D3D12_RESOURCE_DESC resourceDesc{};
@@ -630,7 +577,7 @@ namespace EngineCommon {
         return resource;
     }
 
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors, bool shaderVisible) {
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> EngineCommon::CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors, bool shaderVisible) {
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
         D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
         descriptorHeapDesc.Type = type;
@@ -641,7 +588,7 @@ namespace EngineCommon {
         return descriptorHeap;
     }
 
-    DirectX::ScratchImage LoadTexture(const std::string& filePath) {
+    DirectX::ScratchImage EngineCommon::LoadTexture(const std::string& filePath) {
         // texture loading
         DirectX::ScratchImage image{};
         std::wstring filePathW = ConvertString(filePath);
@@ -660,7 +607,7 @@ namespace EngineCommon {
 
     }
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata) {
+    Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata) {
         // 1. set resource base on metadata
         D3D12_RESOURCE_DESC resourceDesc{};
         resourceDesc.Width = UINT(metadata.width);
@@ -692,7 +639,7 @@ namespace EngineCommon {
     }
 
     [[nodiscard]]
-    Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages,
+    Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages,
         ID3D12Device* device, ID3D12GraphicsCommandList* commandList) {
         std::vector<D3D12_SUBRESOURCE_DATA> subResources;
         DirectX::PrepareUpload(device, mipImages.GetImages(),
@@ -712,7 +659,7 @@ namespace EngineCommon {
 
     }
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) {
+    Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) {
         D3D12_RESOURCE_DESC resourceDesc{};
         resourceDesc.Width = width;
         resourceDesc.Height = height;
@@ -743,13 +690,13 @@ namespace EngineCommon {
         return resource;
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index) {
+    D3D12_CPU_DESCRIPTOR_HANDLE EngineCommon::GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index) {
         D3D12_CPU_DESCRIPTOR_HANDLE handle = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
         handle.ptr += index * descriptorSize;
         return handle;
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index) {
+    D3D12_GPU_DESCRIPTOR_HANDLE EngineCommon::GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index) {
         D3D12_GPU_DESCRIPTOR_HANDLE handle = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
         handle.ptr += index * descriptorSize;
         return handle;
@@ -835,4 +782,3 @@ namespace EngineCommon {
     //        }
     //    }
     //}
-}
