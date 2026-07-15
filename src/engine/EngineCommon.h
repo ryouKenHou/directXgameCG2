@@ -143,10 +143,7 @@ public:
 	void Finalize();
 
 	void Log(std::ostream& os, const std::string& message);
-
 	void Log(std::ostream& os, const std::wstring& message);
-
-
 
 	IDxcBlob* CompileShader(const std::wstring& filePath,const wchar_t* profile,IDxcUtils* dxcUtils,IDxcCompiler3* dxcCompiler,IDxcIncludeHandler* includeHandler);
 
