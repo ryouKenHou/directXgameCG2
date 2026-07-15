@@ -4,7 +4,7 @@ void Model::LoadModel(const std::string& directoryPath, const std::string& filen
 	modelData = LoadObjFile(directoryPath, filename);
 
 	// == vertex resource for model ==
-	vertexResource = EngineCommon::CreateBufferResource(EngineCommon::device.Get(), sizeof(VertexData) * modelData.vertices.size());
+	vertexResource = engineCommon_->CreateBufferResource(engineCommon_->device.Get(), sizeof(VertexData) * modelData.vertices.size());
 
 	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
 	vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size());
@@ -14,23 +14,23 @@ void Model::LoadModel(const std::string& directoryPath, const std::string& filen
 	std::memcpy(vertexData, modelData.vertices.data(), sizeof(*vertexData) * modelData.vertices.size());
 
 	// material resource
-	materialResource = EngineCommon::CreateBufferResource(EngineCommon::device.Get(), sizeof(Material));
+	materialResource = engineCommon_->CreateBufferResource(engineCommon_->device.Get(), sizeof(Material));
 
 	materialResource->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 	*materialData = { {1.0f, 1.0f, 1.0f, 1.0f}, 1 };
 	materialData->uvTransform = Matrix4x4::Identity();
 
 	// WVP resource
-	wvpResource = EngineCommon::CreateBufferResource(EngineCommon::device.Get(), sizeof(TransformationMatrix));
+	wvpResource = engineCommon_->CreateBufferResource(engineCommon_->device.Get(), sizeof(TransformationMatrix));
 
 	wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
 	*wvpData = { Matrix4x4::Identity(), Matrix4x4::Identity() };
 
 	//load sencond texture for sprite
-	DirectX::ScratchImage mipImages2 = EngineCommon::LoadTexture(modelData.material.textureFilePath);
+	DirectX::ScratchImage mipImages2 = engineCommon_->LoadTexture(modelData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
-	textureResource2 = EngineCommon::CreateTextureResource(EngineCommon::device.Get(), metadata2);
-	intermediateResource2 = EngineCommon::UploadTextureData(textureResource2.Get(), mipImages2, EngineCommon::device.Get(), EngineCommon::commandList.Get());
+	textureResource2 = engineCommon_->CreateTextureResource(engineCommon_->device.Get(), metadata2);
+	intermediateResource2 = engineCommon_->UploadTextureData(textureResource2.Get(), mipImages2, engineCommon_->device.Get(), engineCommon_->commandList.Get());
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
 	srvDesc2.Format = metadata2.format;
@@ -38,22 +38,22 @@ void Model::LoadModel(const std::string& directoryPath, const std::string& filen
 	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = EngineCommon::GetCPUDescriptorHandle(EngineCommon::srvDescriptorHeap.Get(), EngineCommon::descriptorSizeSRV, 2);
-	textureSrvHandleGPU2 = EngineCommon::GetGPUDescriptorHandle(EngineCommon::srvDescriptorHeap.Get(), EngineCommon::descriptorSizeSRV, 2);
-	EngineCommon::device->CreateShaderResourceView(textureResource2.Get(), &srvDesc2, textureSrvHandleCPU2);
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = engineCommon_->GetCPUDescriptorHandle(engineCommon_->srvDescriptorHeap.Get(), engineCommon_->descriptorSizeSRV, 2);
+	textureSrvHandleGPU2 = engineCommon_->GetGPUDescriptorHandle(engineCommon_->srvDescriptorHeap.Get(), engineCommon_->descriptorSizeSRV, 2);
+	engineCommon_->device->CreateShaderResourceView(textureResource2.Get(), &srvDesc2, textureSrvHandleCPU2);
 
 }
 
 void Model::Draw() {
-	EngineCommon::commandList->SetGraphicsRootSignature(EngineCommon::rootSignature.Get());
-	EngineCommon::commandList->SetPipelineState(EngineCommon::pipelineState.Get());
-	EngineCommon::commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-	EngineCommon::commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	EngineCommon::commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
-	EngineCommon::commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-	EngineCommon::commandList->SetGraphicsRootConstantBufferView(3, EngineCommon::directionalLightResource->GetGPUVirtualAddress());
-	EngineCommon::commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
-	EngineCommon::commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
+	engineCommon_->commandList->SetGraphicsRootSignature(engineCommon_->rootSignature.Get());
+	engineCommon_->commandList->SetPipelineState(engineCommon_->pipelineState.Get());
+	engineCommon_->commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+	engineCommon_->commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	engineCommon_->commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
+	engineCommon_->commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+	engineCommon_->commandList->SetGraphicsRootConstantBufferView(3, engineCommon_->directionalLightResource->GetGPUVirtualAddress());
+	engineCommon_->commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
+	engineCommon_->commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 }
 
 MaterialData Model::LoadMaterialTemplayeFile(const std::string& directoryPath, const std::string& filename) {
