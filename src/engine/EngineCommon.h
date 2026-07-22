@@ -55,51 +55,7 @@ public:
 
 	// ================= Global Variable Declarations =================
 	//extern std::ofstream logStream;
-	D3DresourceLeakChecker leakChecker;
-	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
-	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
-	Microsoft::WRL::ComPtr<ID3D12Device> device;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
-	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
-	DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
-	WindowManager windowManager;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
-
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
-	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
-
-	uint32_t descriptorSizeSRV;
-	uint32_t descriptorSizeRTV;
-	uint32_t descriptorSizeDSV;
-
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
-	Microsoft::WRL::ComPtr<ID3D12Resource> swapChainTargets[2];
-
-	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
-	uint64_t fenceValue;
-	HANDLE fenceEvent;
-
-	IDxcBlob* vertexShaderBlob;
-	IDxcBlob* pixelShaderBlob;
-
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
-	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilTexture;
-
-	ID3DBlob* signatureBlob;
-	ID3DBlob* errorBlob;
-
-	D3D12_VIEWPORT viewport;
-	D3D12_RECT scissorRect;	
-
-	uint32_t clientWidth;
-	uint32_t clientHeight;
-
-	D3D12_RESOURCE_BARRIER barrier;
-	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource;
+	
 
 	// ================= Function Declarations =================
 	void CreateDefaultPSO();
@@ -143,9 +99,63 @@ public:
 	InputSystem& GetInputSystem() { return inputSystem_; }
 	AudioSystem& GetAudioSystem() { return audioSystem_; }
 
+	ID3D12Device* GetDevice() { return device.Get(); }
+	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
+	ID3D12DescriptorHeap* GetSRVDescriptorHeap() { return srvDescriptorHeap.Get(); }
+	uint32_t GetDescriptorSizeSRV() { return descriptorSizeSRV; }
+	ID3D12RootSignature* GetRootSignature() { return rootSignature.Get(); }
+	ID3D12Resource* GetDirectionalLightResource() { return directionalLightResource.Get(); }
+	ID3D12PipelineState* GetPipelineState() { return pipelineState.Get(); }
+
 	private:
 	InputSystem inputSystem_;
 	AudioSystem audioSystem_;
+
+	D3DresourceLeakChecker leakChecker;
+	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
+	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
+	Microsoft::WRL::ComPtr<ID3D12Device> device;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
+	WindowManager windowManager;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
+
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
+
+	uint32_t descriptorSizeSRV;
+	uint32_t descriptorSizeRTV;
+	uint32_t descriptorSizeDSV;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
+	Microsoft::WRL::ComPtr<ID3D12Resource> swapChainTargets[2];
+
+	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+	uint64_t fenceValue;
+	HANDLE fenceEvent;
+
+	IDxcBlob* vertexShaderBlob;
+	IDxcBlob* pixelShaderBlob;
+
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilTexture;
+
+	ID3DBlob* signatureBlob;
+	ID3DBlob* errorBlob;
+
+	D3D12_VIEWPORT viewport;
+	D3D12_RECT scissorRect;
+
+	uint32_t clientWidth;
+	uint32_t clientHeight;
+
+	D3D12_RESOURCE_BARRIER barrier;
+	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource;
 
 };
 
