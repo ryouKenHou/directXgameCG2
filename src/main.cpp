@@ -49,7 +49,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			frameCount++;
 
 			if (frameCount == 210) {
-				engineCommon->SoundPlayWave(engineCommon->xAudio2.Get(), engineCommon->soundData1);
+				engineCommon->PlayAudio("Test");
 			}
 
 			Matrix4x4 worldMatrix = Matrix4x4::MakeAffineMatrix(transform.scale, transform.rotation, transform.translation);
