@@ -133,13 +133,15 @@
         assert(SUCCEEDED(hr));
     }
 
+	// ========================= Function Definitions =========================
+	// Initialize the engine with the specified width and height
     void EngineCommon::Initialize(int32_t Width, int32_t Height) {
         clientHeight = Height;
         clientWidth = Width;
 
         SetUnhandledExceptionFilter(ExportDump);
-        CoInitializeEx(0, COINIT_MULTITHREADED);
-
+        HREFTYPE hr = CoInitializeEx(0, COINIT_MULTITHREADED);
+        assert(SUCCEEDED(hr));
         std::filesystem::create_directories("logs");
 
         std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -151,7 +153,7 @@
 
         Log(logStream, "Hello, DirectX!");
 
-        HREFTYPE hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
+        hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
         assert(SUCCEEDED(hr));
 
 #ifdef _DEBUG
@@ -269,20 +271,10 @@
         CreateDefaultPSO();
 
 		// Initialize XAudio2
-		audioManager_.Initialize();       
+		audioSystem_.Initialize();       
 
 		// Initialize DirectInput
-        hr = DirectInput8Create(windowManager.getWindowClass().hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
-        assert(SUCCEEDED(hr));
-
-        hr = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
-        assert(SUCCEEDED(hr));
-
-        hr = keyboard->SetDataFormat(&c_dfDIKeyboard);
-        assert(SUCCEEDED(hr));
-
-        hr = keyboard->SetCooperativeLevel(windowManager.getHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
-        assert(SUCCEEDED(hr));
+		inputSystem_.Initialize(windowManager.getHinstance(),windowManager.getHwnd());
 
 		// Initialize viewport and scissor rect
         viewport.Width = static_cast<float>(clientWidth);
@@ -378,7 +370,7 @@
     }
 
     void EngineCommon::Finalize() {
-        audioManager_.Shutdown();
+        audioSystem_.Shutdown();
 
         CloseHandle(fenceEvent);
         signatureBlob->Release();
@@ -716,3 +708,5 @@
     //        }
     //    }
     //}
+
+  

@@ -31,10 +31,10 @@ struct SoundData {
 	unsigned int bufferSize;
 };
 
-class AudioManager {
+class AudioSystem {
 public:
-    AudioManager();
-    ~AudioManager();
+    AudioSystem();
+    ~AudioSystem();
 
     void Initialize();
 

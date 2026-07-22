@@ -2,14 +2,14 @@
 
 #pragma comment(lib, "xaudio2.lib")
 
-AudioManager::AudioManager() {
+AudioSystem::AudioSystem() {
 }
 
-AudioManager::~AudioManager() {
+AudioSystem::~AudioSystem() {
     Shutdown();
 }
 
-void AudioManager::Initialize() {
+void AudioSystem::Initialize() {
 	HRESULT hr;
 
 	hr = XAudio2Create(&xAudio2_, 0, XAUDIO2_DEFAULT_PROCESSOR);
@@ -21,7 +21,7 @@ void AudioManager::Initialize() {
 	LoadAudio("Test", "resources/Alarm01.wav");
 }
 
-SoundData AudioManager::SoundLoadWave(const char* filename) {
+SoundData AudioSystem::SoundLoadWave(const char* filename) {
 	// Implementation for loading a WAV file into SoundData
     std::ifstream file;
     file.open(filename, std::ios_base::binary);
@@ -64,7 +64,7 @@ SoundData AudioManager::SoundLoadWave(const char* filename) {
     return soundData;
 }
 
-void AudioManager::UnloadSound(const std::string& key) {
+void AudioSystem::UnloadSound(const std::string& key) {
     auto it = soundRegistry_.find(key);
     if (it != soundRegistry_.end()) {
         SoundUnload(&it->second); // Free PCM buffer memory
@@ -72,21 +72,21 @@ void AudioManager::UnloadSound(const std::string& key) {
     }
 }
 
-void AudioManager::UnloadAll() {
+void AudioSystem::UnloadAll() {
     for (auto& [key, data] : soundRegistry_) {
         SoundUnload(&data);
     }
     soundRegistry_.clear();
 }
 
-void AudioManager::SoundUnload(SoundData* soundData) {
+void AudioSystem::SoundUnload(SoundData* soundData) {
     delete[] soundData->pBuffer;
     soundData->pBuffer = 0;
     soundData->bufferSize = 0;
     soundData->wfex = {};
 }
 
-bool AudioManager::LoadAudio(const std::string& soundName, const std::string& filePath) {
+bool AudioSystem::LoadAudio(const std::string& soundName, const std::string& filePath) {
     // Avoid re-loading if already cached
     if (soundRegistry_.find(soundName) != soundRegistry_.end()) {
         return true;
@@ -101,14 +101,14 @@ bool AudioManager::LoadAudio(const std::string& soundName, const std::string& fi
     return true;
 }
 
-void AudioManager::PlayAudio(const std::string& soundName) {
+void AudioSystem::PlayAudio(const std::string& soundName) {
 	auto it = soundRegistry_.find(soundName);
 	if (it != soundRegistry_.end()) {
 		SoundPlayWave(it->second);
 	}
 }
 
-void AudioManager::SoundPlayWave(const SoundData& soundData) {
+void AudioSystem::SoundPlayWave(const SoundData& soundData) {
     HRESULT result;
     IXAudio2SourceVoice* pSourceVoice = nullptr;
     result = xAudio2_->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
@@ -123,7 +123,7 @@ void AudioManager::SoundPlayWave(const SoundData& soundData) {
     result = pSourceVoice->Start();
 }
 
-void AudioManager::Shutdown() {
+void AudioSystem::Shutdown() {
     UnloadAll();
 
     if (masterVoice_) {
