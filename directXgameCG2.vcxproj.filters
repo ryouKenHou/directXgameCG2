@@ -54,6 +54,9 @@
     <ClCompile Include="src\model\Model.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
+    <ClCompile Include="src\engine\Audio.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include=".editorconfig" />
@@ -108,6 +111,9 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\EngineHelper.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\engine\Audio.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

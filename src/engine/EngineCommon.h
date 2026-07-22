@@ -17,7 +17,6 @@
 #include <strsafe.h>
 #include <dxgidebug.h>
 #include <dxcapi.h>
-#include <xaudio2.h>
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
@@ -27,32 +26,12 @@
 #include "DebugCamera.h"
 #include "WindowManager.h"
 #include "EngineHelper.h"
+#include "Audio.h"
 #include "../../externals/imgui/imgui.h"
 #include "../../externals/imgui/imgui_impl_win32.h"
 #include "../../externals/imgui/imgui_impl_dx12.h"
 #include "../../externals/DirectXTex/DirectXTex.h"
 #include "../../externals/DirectXTex/d3dx12.h"
-
-struct ChunkHeader {
-	char id[4];
-	int32_t size;
-};
-
-struct RiffHeader {
-	ChunkHeader chunk;
-	char type[4];
-};
-
-struct FormatChunk {
-	ChunkHeader chunk;
-	WAVEFORMATEX fmt;
-};
-
-struct SoundData {
-	WAVEFORMATEX wfex;
-	BYTE* pBuffer;
-	unsigned int bufferSize;
-};
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
 
@@ -118,11 +97,10 @@ public:
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
 
-	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
 	IDirectInput8* directInput;
 	IDirectInputDevice8* keyboard;
 
-	SoundData soundData1;
+	AudioManager audioManager_;
 
 	uint32_t clientWidth;
 	uint32_t clientHeight;
@@ -131,10 +109,6 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource;
 
 	// ================= Function Declarations =================
-	SoundData SoundLoadWave(const char* filename);
-	void SoundUnload(SoundData* soundData);
-	void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData);
-
 	void CreateDefaultPSO();
 	void Initialize(int32_t Width, int32_t Height);
 
@@ -166,4 +140,10 @@ public:
 	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descriptorHeap, uint32_t descriptorSize, uint32_t index);
 
 	//void TempMainFunction();
+
+	// ================= Audio Function Declarations =================
+	bool LoadAudio(const std::string& soundName, const std::string& filePath) { return audioManager_.LoadAudio(soundName, filePath); }
+	void SoundUnload(const std::string& soundName) { audioManager_.UnloadSound(soundName); }
+	void PlayAudio(const std::string& soundName) { audioManager_.PlayAudio(soundName); }
+
 };
