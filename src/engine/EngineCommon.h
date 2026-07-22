@@ -18,15 +18,13 @@
 #include <dxgidebug.h>
 #include <dxcapi.h>
 
-#define DIRECTINPUT_VERSION 0x0800
-#include <dinput.h>
-
 #include "ConvertString.hpp"
 #include "Matrix4x4.hpp"
 #include "DebugCamera.h"
 #include "WindowManager.h"
 #include "EngineHelper.h"
 #include "Audio.h"
+#include "InputSystem.h"
 #include "../../externals/imgui/imgui.h"
 #include "../../externals/imgui/imgui_impl_win32.h"
 #include "../../externals/imgui/imgui_impl_dx12.h"
@@ -95,12 +93,7 @@ public:
 	ID3DBlob* errorBlob;
 
 	D3D12_VIEWPORT viewport;
-	D3D12_RECT scissorRect;
-
-	IDirectInput8* directInput;
-	IDirectInputDevice8* keyboard;
-
-	AudioManager audioManager_;
+	D3D12_RECT scissorRect;	
 
 	uint32_t clientWidth;
 	uint32_t clientHeight;
@@ -142,8 +135,35 @@ public:
 	//void TempMainFunction();
 
 	// ================= Audio Function Declarations =================
-	bool LoadAudio(const std::string& soundName, const std::string& filePath) { return audioManager_.LoadAudio(soundName, filePath); }
-	void SoundUnload(const std::string& soundName) { audioManager_.UnloadSound(soundName); }
-	void PlayAudio(const std::string& soundName) { audioManager_.PlayAudio(soundName); }
+	bool LoadAudio(const std::string& soundName, const std::string& filePath) { return audioSystem_.LoadAudio(soundName, filePath); }
+	void SoundUnload(const std::string& soundName) { audioSystem_.UnloadSound(soundName); }
+	void PlayAudio(const std::string& soundName) { audioSystem_.PlayAudio(soundName); }
 
+	// ================== getters ==================
+	InputSystem& GetInputSystem() { return inputSystem_; }
+	AudioSystem& GetAudioSystem() { return audioSystem_; }
+
+	private:
+	InputSystem inputSystem_;
+	AudioSystem audioSystem_;
+
+};
+
+class Input {
+public:
+	static bool IsKeyPressed(int key) {
+		return EngineCommon::GetInstance().GetInputSystem().IsKeyPressed(key);
+	}
+
+	static bool IsKeyHeld(int key) {
+		return EngineCommon::GetInstance().GetInputSystem().IsKeyHeld(key);
+	}
+
+	static bool IsKeyReleased(int key) {
+		return EngineCommon::GetInstance().GetInputSystem().IsKeyReleased(key);
+	}
+	
+	static void Update() {
+		EngineCommon::GetInstance().GetInputSystem().Update();
+	}
 };

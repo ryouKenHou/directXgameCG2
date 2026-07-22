@@ -36,15 +36,23 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		}
 		else {
 
-			EngineCommon::GetInstance().keyboard->Acquire();
-			BYTE key[256] = {};
-			EngineCommon::GetInstance().keyboard->GetDeviceState(sizeof(key), key);
+			Input::Update();
 
-			if (key[DIK_0]) {
+			BYTE* keyboardState = EngineCommon::GetInstance().GetInputSystem().getKeyboardState();
+
+			if (keyboardState[DIK_CAPSLOCK]) {
 				OutputDebugStringA("Hit 0.\n");
 			}
 
-			debugCamera.Update(key);
+			if (Input::IsKeyPressed(DIK_CAPSLOCK)) {
+				OutputDebugStringA("Hit 1.\n");
+			}
+
+			if (Input::IsKeyHeld(DIK_CAPSLOCK)) {
+				OutputDebugStringA("Hit 2.\n");
+			}
+
+			debugCamera.Update(EngineCommon::GetInstance().GetInputSystem().getKeyboardState());
 
 			frameCount++;
 

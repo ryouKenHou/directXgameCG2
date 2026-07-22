@@ -17,6 +17,7 @@ public:
     // Inline getters can stay in the header for performance
     WNDCLASS getWindowClass() const { return windowClass_; }
     HWND getHwnd() const { return hwnd_; }
+    HINSTANCE getHinstance() const { return windowClass_.hInstance; }
 
     // Only declarations go here
     void Initialize(int nCmdShow, int width, int height, const wchar_t* windowTitle);
