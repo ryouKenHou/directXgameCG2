@@ -31,10 +31,12 @@
 #include "../../externals/DirectXTex/DirectXTex.h"
 #include "../../externals/DirectXTex/d3dx12.h"
 
-static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
+
 
 class EngineCommon {
 public:
+	static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception);
+
 	static EngineCommon& GetInstance() {
 		static EngineCommon instance;
 		return instance;

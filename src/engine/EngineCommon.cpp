@@ -398,7 +398,7 @@ void EngineCommon::Log(std::ostream& os, const std::wstring& message) {
 	Log(os, ConvertString(message));
 }
 
-static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception) {
+LONG WINAPI  EngineCommon::ExportDump(EXCEPTION_POINTERS* exception) {
 	SYSTEMTIME time;
 	GetLocalTime(&time);
 	wchar_t filePath[MAX_PATH] = { 0 };
