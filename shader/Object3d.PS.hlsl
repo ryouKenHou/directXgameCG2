@@ -21,9 +21,15 @@ PixelShaderOuput main(VertexShaderOutput input)
     //output.color = float4(input.texcoord.x, input.texcoord.y, 0.0f, 1.0f);
     //return output;
     
-    if (gMaterial.enableLighting != 0) {
+    if (gMaterial.enableLighting == 1)
+    { // half lambertian
         float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
         float cos = saturate(pow(NdotL*0.5f+0.5f, 2.0f ));
+        output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intensity;
+    }
+    else if (gMaterial.enableLighting == 2) //lambertian
+    {
+        float cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
         output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intensity;
     }
     else {

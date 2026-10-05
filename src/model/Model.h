@@ -13,9 +13,9 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource;
 	ModelData modelData;
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2;
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResource2;
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource2;
+
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvGPUHandle{};
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexResource = nullptr;
 
 	MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
@@ -25,6 +25,8 @@ private:
 	EngineCommon* engineCommon_ = &EngineCommon::GetInstance();
 
 	D3D12_INDEX_BUFFER_VIEW indexBufferView{};
+
+	uint32_t indexCount = 0;
 public:
 	TransformationMatrix* wvpData = nullptr;
 	Material* materialData = nullptr;

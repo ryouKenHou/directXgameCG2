@@ -165,16 +165,15 @@ void EngineCommon::Initialize(int32_t Width, int32_t Height) {
 	);
 	assert(SUCCEEDED(hr));
 
-	rtvHeap = CreateDescriptorHeap(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
-	srvDescriptorHeap = CreateDescriptorHeap(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
-	
-	dsvHeap = CreateDescriptorHeap(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
+	rtvAllocator_.Initialize(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
+	srvAllocator_.Initialize(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
+	dsvAllocator_.Initialize(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 	depthStencilResource = CreateDepthStencilTextureResource(device.Get(), clientWidth, clientHeight);
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	device->CreateDepthStencilView(depthStencilResource.Get(), &dsvDesc, dsvHeap->GetCPUDescriptorHandleForHeapStart());
+	device->CreateDepthStencilView(depthStencilResource.Get(), &dsvDesc, dsvAllocator_.GetHeap()->GetCPUDescriptorHandleForHeapStart());
 
 	descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -188,10 +187,10 @@ void EngineCommon::Initialize(int32_t Width, int32_t Height) {
 	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetCPUDescriptorHandle(rtvHeap.Get(), descriptorSizeRTV, 0);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetCPUDescriptorHandle(rtvAllocator_.GetHeap(), descriptorSizeRTV, 0);
 	rtvHandles[0] = rtvHandle;
 	device->CreateRenderTargetView(swapChainTargets[0].Get(), &rtvDesc, rtvHandles[0]);
-	rtvHandles[1] = GetCPUDescriptorHandle(rtvHeap.Get(), descriptorSizeRTV, 1);
+	rtvHandles[1] = GetCPUDescriptorHandle(rtvAllocator_.GetHeap(), descriptorSizeRTV, 1);
 	device->CreateRenderTargetView(swapChainTargets[1].Get(), &rtvDesc, rtvHandles[1]);
 
 	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
@@ -226,13 +225,22 @@ void EngineCommon::Initialize(int32_t Width, int32_t Height) {
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 	ImGui_ImplWin32_Init(windowManager.getHwnd());
-	ImGui_ImplDX12_Init(device.Get(), swapChainDesc.BufferCount, rtvDesc.Format, srvDescriptorHeap.Get(), srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	DescriptorHandle imguiHandle = srvAllocator_.Allocate();
+
+	ImGui_ImplDX12_Init(
+		device.Get(),
+		swapChainDesc.BufferCount,
+		rtvDesc.Format,
+		srvAllocator_.GetHeap(),
+		imguiHandle.cpuHandle,
+		imguiHandle.gpuHandle
+	);
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->Build();
 #endif
 
 	directionalLightResource = CreateBufferResource(device.Get(), sizeof(DirectionalLight));
-	DirectionalLight* directionalLightData = nullptr;
+	directionalLightData = nullptr;
 	directionalLightResource->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
 	directionalLightData->color = { 1.0f, 1.0f, 1.0f ,1.0f };
 	directionalLightData->direction = { 0.0f, -1.0f, 0.0f };
@@ -258,10 +266,10 @@ void EngineCommon::PreDraw() {
 	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
 	commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { srvAllocator_.GetHeap() };
 	commandList->SetDescriptorHeaps(1, descriptorHeaps);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvAllocator_.GetHeap()->GetCPUDescriptorHandleForHeapStart();
 	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], FALSE, &dsvHandle);
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -401,31 +409,6 @@ IDxcBlob* EngineCommon::CompileShader(
 	return shaderBlob;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::CreateBufferResource(ID3D12Device* device, size_t sizeInBytes) {
-	D3D12_HEAP_PROPERTIES heapProperties{};
-	heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	D3D12_RESOURCE_DESC resourceDesc{};
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resourceDesc.Width = sizeInBytes;
-	resourceDesc.Height = 1;
-	resourceDesc.DepthOrArraySize = 1;
-	resourceDesc.MipLevels = 1;
-	resourceDesc.SampleDesc.Count = 1;
-	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
-	HRESULT hr = device->CreateCommittedResource(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&resource)
-	);
-	assert(SUCCEEDED(hr));
-	return resource;
-}
-
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> EngineCommon::CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors, bool shaderVisible) {
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 	D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
@@ -437,75 +420,8 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> EngineCommon::CreateDescriptorHeap(
 	return descriptorHeap;
 }
 
-DirectX::ScratchImage EngineCommon::LoadTexture(const std::string& filePath) {
-	// texture loading
-	DirectX::ScratchImage image{};
-	std::wstring filePathW = ConvertString(filePath);
-	HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
-	assert(SUCCEEDED(hr));
-
-	// mipmap generation
-	DirectX::ScratchImage mipImage{};
-	hr = DirectX::GenerateMipMaps(
-		image.GetImages(), image.GetImageCount(), image.GetMetadata(),
-		DirectX::TEX_FILTER_SRGB, 0, mipImage
-	);
-	assert(SUCCEEDED(hr));
-
-	return mipImage;
-
-}
-
-Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata) {
-	// 1. set resource base on metadata
-	D3D12_RESOURCE_DESC resourceDesc{};
-	resourceDesc.Width = UINT(metadata.width);
-	resourceDesc.Height = UINT(metadata.height);
-	resourceDesc.MipLevels = UINT16(metadata.mipLevels);
-	resourceDesc.DepthOrArraySize = UINT16(metadata.arraySize);
-	resourceDesc.Format = metadata.format;
-	resourceDesc.SampleDesc.Count = 1;
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);
-
-	// 2. set heap properties
-	D3D12_HEAP_PROPERTIES heapProperties{};
-	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-	//heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-	//heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
-
-	// 3. create resource
-	Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-	HRESULT hr = device->CreateCommittedResource(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&resource)
-	);
-	assert(SUCCEEDED(hr));
-	return resource;
-}
-
-[[nodiscard]]
-Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages,
-	ID3D12Device* device, ID3D12GraphicsCommandList* commandList) {
-	std::vector<D3D12_SUBRESOURCE_DATA> subResources;
-	DirectX::PrepareUpload(device, mipImages.GetImages(),
-		mipImages.GetImageCount(), mipImages.GetMetadata(), subResources);
-	uint64_t intermediateSize = GetRequiredIntermediateSize(texture, 0, UINT(subResources.size()));
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource = CreateBufferResource(device, intermediateSize);
-	UpdateSubresources(commandList, texture, intermediateResource.Get(), 0, 0, UINT(subResources.size()), subResources.data());
-	D3D12_RESOURCE_BARRIER barrier{};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.pResource = texture;
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	commandList->ResourceBarrier(1, &barrier);
-	return intermediateResource;
-
+DescriptorHandle EngineCommon::LoadTexture(const std::string& filePath) {
+	return textureManager_.Load(filePath, device.Get(), commandList.Get(), srvAllocator_);
 }
 
 Microsoft::WRL::ComPtr<ID3D12Resource> EngineCommon::CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height) {

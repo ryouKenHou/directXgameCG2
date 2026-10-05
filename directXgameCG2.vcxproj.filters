@@ -63,6 +63,12 @@
     <ClCompile Include="src\engine\PsoManager.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
+    <ClCompile Include="src\engine\DescriptorAllocator.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="src\engine\TextureManager.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include=".editorconfig" />
@@ -129,6 +135,12 @@
       <Filter>標頭檔</Filter>
     </ClInclude>
     <ClInclude Include="src\engine\LogSystem.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\engine\TextureManager.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="src\engine\DescriptorAllocator.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>

@@ -31,7 +31,8 @@
 
 #include "LogSystem.h"
 #include "PsoManager.h"
-
+#include "DescriptorAllocator.h"
+#include "TextureManager.h"
 
 
 class EngineCommon {
@@ -71,17 +72,9 @@ public:
 
 	IDxcBlob* CompileShader(const std::wstring& filePath,const wchar_t* profile,IDxcUtils* dxcUtils,IDxcCompiler3* dxcCompiler,IDxcIncludeHandler* includeHandler);
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(ID3D12Device* device, size_t sizeInBytes);
-
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors, bool shaderVisible);
 
-	DirectX::ScratchImage LoadTexture(const std::string& filePath);
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata);
-
-	[[nodiscard]]
-	Microsoft::WRL::ComPtr<ID3D12Resource> UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages,
-		ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
+	DescriptorHandle LoadTexture(const std::string& filePath);
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(ID3D12Device* device, int32_t width, int32_t height);
 
@@ -102,13 +95,17 @@ public:
 
 	ID3D12Device* GetDevice() { return device.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList.Get(); }
-	ID3D12DescriptorHeap* GetSRVDescriptorHeap() { return srvDescriptorHeap.Get(); }
+	DescriptorAllocator& GetSRVAllocator() { return srvAllocator_; }
 	uint32_t GetDescriptorSizeSRV() { return descriptorSizeSRV; }
 	ID3D12RootSignature* GetRootSignature() { return rootSignature.Get(); }
 	ID3D12Resource* GetDirectionalLightResource() { return directionalLightResource.Get(); }
 	PSOManager& GetPSOManager() { return psoManager_; }
 
+	DirectionalLight* GetDirectionalLightData() { return directionalLightData; }
+
 	private:
+	DirectionalLight* directionalLightData;
+
 	InputSystem inputSystem_;
 	AudioSystem audioSystem_;
 
@@ -122,8 +119,17 @@ public:
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
 	WindowManager windowManager;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
+
+	TextureManager textureManager_;
+
+	// 1. RTV Allocator (Non-Shader Visible, ~32 slots for swapchain & render targets)
+	DescriptorAllocator rtvAllocator_;
+
+	// 2. DSV Allocator (Non-Shader Visible, ~16 slots for depth buffers & shadow maps)
+	DescriptorAllocator dsvAllocator_;
+
+	// 3. SRV/CBV/UAV Allocator (Shader Visible, ~2048+ slots for textures, materials, etc.)
+	DescriptorAllocator srvAllocator_;
 
 	PSOManager psoManager_;
 
@@ -141,7 +147,7 @@ public:
 	HANDLE fenceEvent;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
+	
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource;
 
 	ID3DBlob* signatureBlob;
